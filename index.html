@@ -2,22 +2,31 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Supabase SDK Test</title>
+<title>Supabase Users Test</title>
 </head>
 <body>
-<h1>Supabase SDK Test</h1>
-<div id="status">Status unbekannt</div>
+<h1>Supabase Users Test</h1>
+<pre id="output">Lade...</pre>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-  const statusDiv = document.getElementById('status');
-  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.coo"; // ersetzen
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ"; // ersetzen
+  const output = document.getElementById('output');
+  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";  // ersetzen
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";             // ersetzen
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  statusDiv.innerText = "✅ Supabase SDK + Client geladen!";
-  console.log('Supabase Client:', supabase);
+
+  try {
+    const { data, error } = await supabase.from("users").select("*").limit(5);
+    if (error) {
+      output.innerText = "❌ Fehler: " + error.message;
+    } else {
+      output.innerText = "✅ Daten empfangen:\n" + JSON.stringify(data, null, 2);
+    }
+  } catch (e) {
+    output.innerText = "❌ Exception: " + e.message;
+  }
 </script>
 </body>
 </html>
