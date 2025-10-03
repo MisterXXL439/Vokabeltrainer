@@ -3,233 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vokabeltrainer</title>
-
-<style>
-body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background: #f0f4f8; }
-h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; }
-input, select, button { font-size: 1.2em; padding: 10px 15px; margin: 5px; border-radius: 10px; border: none; }
-button { background: #1a73e8; color: #fff; cursor: pointer; }
-button:active { background: #1665c1; }
-#question { font-size: 2em; margin: 20px; color: #1a73e8; }
-#feedback { margin: 15px; font-size: 1.3em; min-height: 24px; }
-#progressBarContainer { width: 80%; max-width: 400px; height: 25px; background: #ccc; margin: 20px auto; border-radius: 15px; overflow: hidden; }
-#progressBar { width: 0%; height: 100%; background: #34a853; transition: width 0.3s; }
-#finalBarContainer { width: 80%; max-width: 400px; height: 25px; background: #ddd; margin: 20px auto; border-radius: 15px; overflow: hidden; display:none; position: relative; }
-#finalCorrect { height: 100%; background: #34a853; float:left; }
-#finalWrong { height: 100%; background: #ea4335; float:left; }
-#finalPercent { position: absolute; width: 100%; text-align: center; top:0; left:0; line-height:25px; font-weight:bold; color:white; text-shadow:1px 1px 2px black; }
-</style>
-
+<title>Supabase Test</title>
 </head>
 <body>
+<h1>Supabase Test</h1>
+<div id="status">Lade Supabase...</div>
 
-<h1>Vokabeltrainer</h1>
-
-<!-- Auth -->
-<div id="authDiv">
-  <h3>Registrieren</h3>
-  <input type="text" id="regUsername" placeholder="Benutzername">
-  <input type="password" id="regPassword" placeholder="Passwort">
-  <button id="registerBtn">Registrieren</button>
-
-  <h3>Login</h3>
-  <input type="text" id="loginUsername" placeholder="Benutzername">
-  <input type="password" id="loginPassword" placeholder="Passwort">
-  <button id="loginBtn">Login</button>
-</div>
-
-<div id="quizDiv" style="display:none;">
-  Richtung:
-  <select id="directionSelect">
-    <option value="en-de">Englisch → Deutsch</option>
-    <option value="de-en">Deutsch → Englisch</option>
-  </select>
-  Wiederholungen:
-  <select id="repeatSelect">
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3" selected>3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
-  <button id="startBtn">Start</button>
-  <button id="resetBtn">Fortschritt zurücksetzen</button>
-
-  <div id="question">Drücke Start, um zu beginnen</div>
-  <input type="text" id="answer" placeholder="Antwort eingeben" disabled>
-  <div id="feedback"></div>
-  <div id="progressBarContainer"><div id="progressBar"></div></div>
-  <div id="finalBarContainer">
-    <div id="finalCorrect"></div>
-    <div id="finalWrong"></div>
-    <div id="finalPercent"></div>
-  </div>
-</div>
-
-<!-- Supabase + bcrypt -->
+<!-- Supabase SDK ganz unten einbinden -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.7.0/dist/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co'; // Ersetzen
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // Ersetzen
 
-  // -------- Supabase Initialisierung --------
-  const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co'; // ersetzen
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // ersetzen
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Supabase Client erzeugen
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // -------- Variablen --------
-  let currentUser = null;
-  let vocab = [];
-  let richtigZaehler = {};
-  let falschZaehler = {};
-  let repeatTarget = 3;
-  let currentWord = null;
-  let lastWord = null;
-  let totalCorrect = 0;
-  let totalAnswers = 0;
-  let direction = "en-de";
-  let quizActive = false;
+        // Test: Verbindung zur Tabelle "users"
+        const { data, error } = await supabaseClient.from('users').select('*').limit(1);
 
-  // -------- Registrierung --------
-  document.getElementById("registerBtn").addEventListener("click", async ()=>{
-    const username = document.getElementById("regUsername").value.trim();
-    const password = document.getElementById("regPassword").value.trim();
-    if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
-
-    const hash = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-
-    const {error} = await supabaseClient.from('users')
-      .insert([{username,password_hash:hash, activated:false}]);
-
-    if(error){ alert("Fehler: "+error.message); return; }
-    alert("Registrierung erfolgreich! Warte auf Admin-Freischaltung.");
-  });
-
-  // -------- Login --------
-  document.getElementById("loginBtn").addEventListener("click", async ()=>{
-    const username = document.getElementById("loginUsername").value.trim();
-    const password = document.getElementById("loginPassword").value.trim();
-    if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
-
-    const {data,error} = await supabaseClient.from('users')
-      .select('*').eq('username',username).single();
-
-    if(error || !data){ alert("Benutzer nicht gefunden."); return; }
-    if(!data.activated){ alert("Account noch nicht freigeschaltet."); return; }
-
-    if(bcrypt.compareSync(password,data.password_hash)){
-      currentUser = data;
-      document.getElementById("authDiv").style.display="none";
-      document.getElementById("quizDiv").style.display="block";
-      loadVocab();
-    } else { alert("Falsches Passwort."); }
-  });
-
-  // -------- Vokabeln laden --------
-  async function loadVocab(){
-    const {data,error} = await supabaseClient.from('vocab').select('*');
-    if(error){ alert("Fehler beim Laden der Vokabeln"); return; }
-    vocab = data;
-    vocab.forEach((v,i)=>{ richtigZaehler[i]=0; falschZaehler[i]=0; });
-    totalCorrect=0; totalAnswers=0;
-    updateProgress();
-  }
-
-  // -------- Fortschritt speichern --------
-  async function saveProgress(){
-    if(!currentUser) return;
-    for(let i=0;i<vocab.length;i++){
-      await supabaseClient.from('progress').upsert([{
-        user_id: currentUser.id,
-        vocab_id: vocab[i].id,
-        correct_count: richtigZaehler[i],
-        wrong_count: falschZaehler[i]
-      }]);
+        if(error) {
+            document.getElementById('status').innerText = 'Fehler beim Zugriff auf Supabase: ' + error.message;
+        } else {
+            document.getElementById('status').innerText = 'Supabase erfolgreich geladen! Erste Zeile aus "users": ' + JSON.stringify(data[0] || {});
+        }
+    } catch(e) {
+        document.getElementById('status').innerText = 'Supabase Client konnte nicht erstellt werden: ' + e.message;
     }
-  }
-
-  // -------- Quiz Funktionen --------
-  function resetCounters(){ richtigZaehler={}; falschZaehler={}; vocab.forEach((v,i)=>{ richtigZaehler[i]=0; falschZaehler[i]=0; }); totalCorrect=0; totalAnswers=0; updateProgress(); }
-
-  function pickRandomWord(){ 
-    let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); 
-    if(remaining.length===0) return null; 
-    if(remaining.length>1 && lastWord!==null){ remaining=remaining.filter(i=>i!==lastWord); if(remaining.length===0) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); } 
-    lastWord = remaining[Math.floor(Math.random()*remaining.length)]; 
-    return lastWord; 
-  }
-
-  function startQuiz(){ 
-    quizActive=true; 
-    document.getElementById("startBtn").disabled=true; 
-    document.getElementById("answer").disabled=false; 
-    document.getElementById("answer").focus(); 
-    direction=document.getElementById("directionSelect").value; 
-    repeatTarget=parseInt(document.getElementById("repeatSelect").value); 
-    totalCorrect=0; totalAnswers=0; 
-    resetCounters(); 
-    document.getElementById("progressBar").style.width="0%"; 
-    document.getElementById("finalBarContainer").style.display="none"; 
-    nextQuestion(); 
-  }
-
-  function nextQuestion(){ 
-    currentWord=pickRandomWord(); 
-    if(currentWord===null){ endQuiz(); return; } 
-    let q=(direction==="en-de")? vocab[currentWord].en : vocab[currentWord].de; 
-    document.getElementById("question").innerText=q; 
-    document.getElementById("answer").value=""; 
-    document.getElementById("answer").focus(); 
-    document.getElementById("feedback").innerText=""; 
-  }
-
-  function checkAnswer(){ 
-    totalAnswers++; 
-    let input=document.getElementById("answer").value.trim().toLowerCase(); 
-    let correct=(direction==="en-de")? vocab[currentWord].de.toLowerCase() : vocab[currentWord].en.toLowerCase(); 
-    if(input===correct){ 
-      richtigZaehler[currentWord]++; totalCorrect++; 
-      document.getElementById("feedback").innerText="✅ Richtig!"; 
-      document.getElementById("feedback").style.color="green"; 
-      updateProgress(); 
-    } else { 
-      falschZaehler[currentWord]++; 
-      document.getElementById("feedback").innerText="❌ Falsch! Richtige Antwort: "+correct; 
-      document.getElementById("feedback").style.color="red"; 
-    } 
-    saveProgress(); 
-    setTimeout(nextQuestion,1000); 
-  }
-
-  function updateProgress(){ 
-    const totalTarget = repeatTarget*vocab.length; 
-    const progress = Math.min(100,(totalCorrect/totalTarget)*100); 
-    document.getElementById("progressBar").style.width=progress+"%"; 
-  }
-
-  function endQuiz(){ 
-    document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉"; 
-    document.getElementById("answer").disabled=true; 
-    document.getElementById("feedback").innerText=""; 
-    document.getElementById("startBtn").disabled=false; 
-    quizActive=false; 
-    const correctPercent = totalAnswers ? (totalCorrect/totalAnswers)*100 : 0; 
-    document.getElementById("finalBarContainer").style.display="block"; 
-    document.getElementById("finalCorrect").style.width=correctPercent+"%"; 
-    document.getElementById("finalWrong").style.width=(100-correctPercent)+"%"; 
-    document.getElementById("finalPercent").innerText=Math.round(correctPercent)+"% richtig"; 
-    saveProgress(); 
-  }
-
-  // -------- Eventlistener --------
-  document.getElementById("startBtn").addEventListener("click", startQuiz);
-  document.getElementById("resetBtn").addEventListener("click", resetCounters);
-  document.getElementById("answer").addEventListener("keydown",(e)=>{ if(e.key==="Enter") checkAnswer(); });
-
 });
 </script>
-
 </body>
 </html>
