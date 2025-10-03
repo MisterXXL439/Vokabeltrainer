@@ -2,44 +2,22 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supabase Ping Test</title>
+<title>Supabase SDK Test</title>
 </head>
 <body>
-<h1>Supabase Ping Test</h1>
+<h1>Supabase SDK Test</h1>
 <div id="status">Status unbekannt</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.7.0/dist/supabase.min.js"></script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-    const statusDiv = document.getElementById('status');
+  const statusDiv = document.getElementById('status');
+  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.coo"; // ersetzen
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ"; // ersetzen
 
-    if(typeof supabase === 'undefined'){
-        statusDiv.innerText = "❌ Supabase SDK nicht geladen!";
-        return;
-    }
-
-    statusDiv.innerText = "✅ Supabase SDK geladen\n";
-
-    const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co"; // ersetze
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ"; // ersetze
-
-    try {
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        statusDiv.innerText += "✅ Client erstellt\n";
-
-        // Minimalabfrage: Healthcheck via RPC (ping)
-        const { data, error } = await client.rpc('version'); // supabase system rpc
-        if(error){
-            statusDiv.innerText += "❌ Ping fehlgeschlagen: " + error.message;
-        } else {
-            statusDiv.innerText += "✅ Ping erfolgreich: " + JSON.stringify(data);
-        }
-    } catch(e){
-        statusDiv.innerText += "❌ Exception: " + e.message;
-    }
-});
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  statusDiv.innerText = "✅ Supabase SDK + Client geladen!";
+  console.log('Supabase Client:', supabase);
 </script>
 </body>
 </html>
