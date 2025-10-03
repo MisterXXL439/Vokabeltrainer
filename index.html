@@ -34,7 +34,6 @@ input:focus { outline: none; border-color: #1a73e8; }
 
 <h1>Vokabeltrainer</h1>
 
-<!-- Registrieren/Login -->
 <div id="authDiv">
   <div id="registerDiv">
     <h3>Registrieren</h3>
@@ -56,7 +55,6 @@ input:focus { outline: none; border-color: #1a73e8; }
   </div>
 </div>
 
-<!-- Quiz -->
 <div id="quizDiv" style="display:none;">
   Richtung:
   <select id="directionSelect">
@@ -82,222 +80,115 @@ input:focus { outline: none; border-color: #1a73e8; }
 </div>
 
 <script>
-// ----------------- Supabase Initialisierung -----------------
-const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co; // <-- ersetzen
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // <-- ersetzen
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ----------------- Alles erst nach DOMContentLoaded -----------------
+document.addEventListener('DOMContentLoaded', () => {
 
-// ----------------- Variablen -----------------
-let currentUser = null;
-let vocab = [];
-let richtigZaehler = {};
-let falschZaehler = {};
-let repeatTarget = 3;
-let currentWord = null;
-let lastWord = null;
-let totalCorrect = 0;
-let totalAnswers = 0;
-let direction = "en-de";
-let quizActive = false;
+  const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co'; // <-- ersetzen
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // <-- ersetzen
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ----------------- Registrierung -----------------
-document.getElementById("registerBtn").addEventListener("click", async ()=>{
-  const username = document.getElementById("regUsername").value.trim();
-  const password = document.getElementById("regPassword").value.trim();
-  if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
+  let currentUser = null;
+  let vocab = [];
+  let richtigZaehler = {};
+  let falschZaehler = {};
+  let repeatTarget = 3;
+  let currentWord = null;
+  let lastWord = null;
+  let totalCorrect = 0;
+  let totalAnswers = 0;
+  let direction = "en-de";
+  let quizActive = false;
 
-  const salt = bcrypt.genSaltSync(10);
-  const hash = bcrypt.hashSync(password, salt);
+  // ----------------- Registrierung -----------------
+  document.getElementById("registerBtn").addEventListener("click", async ()=>{
+    const username = document.getElementById("regUsername").value.trim();
+    const password = document.getElementById("regPassword").value.trim();
+    if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
 
-  const {data, error} = await supabaseClient
-    .from('users')
-    .insert([{username,password_hash:hash}]);
+    const hash = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
-  if(error){ alert("Fehler: "+error.message); }
-  else{ alert("Registrierung erfolgreich! Warte auf Admin-Freischaltung."); }
-});
+    const {data, error} = await supabaseClient.from('users')
+      .insert([{username,password_hash:hash}]);
 
-// ----------------- Login -----------------
-document.getElementById("loginBtn").addEventListener("click", async ()=>{
-  const username = document.getElementById("loginUsername").value.trim();
-  const password = document.getElementById("loginPassword").value.trim();
-  if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
-
-  const {data,error} = await supabaseClient
-    .from('users')
-    .select('*')
-    .eq('username',username)
-    .single();
-
-  if(error){ alert("Benutzer nicht gefunden."); return; }
-  if(!data.activated){ alert("Account noch nicht vom Admin freigeschaltet."); return; }
-
-  if(bcrypt.compareSync(password, data.password_hash)){
-    currentUser = data;
-    document.getElementById("authDiv").style.display="none";
-    document.getElementById("quizDiv").style.display="block";
-    document.getElementById("userLabel").innerText = "Angemeldet als: "+currentUser.username;
-    loadVocab();
-  }else{
-    alert("Falsches Passwort.");
-  }
-});
-
-// ----------------- Logout -----------------
-document.getElementById("logoutBtn").addEventListener("click", ()=>{
-  currentUser=null;
-  document.getElementById("authDiv").style.display="block";
-  document.getElementById("quizDiv").style.display="none";
-});
-
-// ----------------- Vokabeln laden -----------------
-async function loadVocab(){
-  const {data,error} = await supabaseClient.from('vocab').select('*');
-  if(error){ alert("Fehler beim Laden der Vokabeln."); return; }
-  vocab = data;
-  resetCounters();
-  updateProgress();
-}
-
-// ----------------- Fortschritt laden -----------------
-async function loadProgress(){
-  if(!currentUser) return;
-  const {data,error} = await supabaseClient
-    .from('progress')
-    .select('*')
-    .eq('user_id',currentUser.id);
-
-  richtigZaehler = {};
-  falschZaehler = {};
-  vocab.forEach((v,i)=>{
-    richtigZaehler[i]=0;
-    falschZaehler[i]=0;
+    if(error){ alert("Fehler: "+error.message); }
+    else{ alert("Registrierung erfolgreich! Warte auf Admin-Freischaltung."); }
   });
 
-  if(data) data.forEach(p=>{
-    const index = vocab.findIndex(v=>v.id===p.vocab_id);
-    if(index!==-1){
-      richtigZaehler[index] = p.correct_count;
-      falschZaehler[index] = p.wrong_count;
-    }
+  // ----------------- Login -----------------
+  document.getElementById("loginBtn").addEventListener("click", async ()=>{
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+    if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
+
+    const {data,error} = await supabaseClient.from('users')
+      .select('*').eq('username',username).single();
+
+    if(error){ alert("Benutzer nicht gefunden."); return; }
+    if(!data.activated){ alert("Account noch nicht freigeschaltet."); return; }
+
+    if(bcrypt.compareSync(password,data.password_hash)){
+      currentUser = data;
+      document.getElementById("authDiv").style.display="none";
+      document.getElementById("quizDiv").style.display="block";
+      document.getElementById("userLabel").innerText = "Angemeldet als: "+currentUser.username;
+      loadVocab();
+    } else { alert("Falsches Passwort."); }
   });
 
-  totalCorrect = Object.values(richtigZaehler).reduce((a,b)=>a+b,0);
-  totalAnswers = totalCorrect + Object.values(falschZaehler).reduce((a,b)=>a+b,0);
-  updateProgress();
-}
-
-// ----------------- Fortschritt speichern -----------------
-async function saveProgress(){
-  if(!currentUser) return;
-  for(let i=0;i<vocab.length;i++){
-    await supabaseClient
-      .from('progress')
-      .upsert([{user_id:currentUser.id,vocab_id:vocab[i].id,correct_count:richtigZaehler[i],wrong_count:falschZaehler[i]}]);
-  }
-}
-
-// ----------------- Quiz Funktionen -----------------
-function resetCounters(){
-  richtigZaehler = {};
-  falschZaehler = {};
-  vocab.forEach((v,i)=>{
-    richtigZaehler[i]=0;
-    falschZaehler[i]=0;
+  // ----------------- Logout -----------------
+  document.getElementById("logoutBtn").addEventListener("click", ()=>{
+    currentUser=null;
+    document.getElementById("authDiv").style.display="block";
+    document.getElementById("quizDiv").style.display="none";
   });
-  totalCorrect=0;
-  totalAnswers=0;
-  updateProgress();
-}
 
-function pickRandomWord(){
-  let remaining = vocab.map((_,i)=>i).filter(i => richtigZaehler[i]<repeatTarget);
-  if(remaining.length===0) return null;
-  if(remaining.length>1 && lastWord!==null){
-    remaining = remaining.filter(i=>i!==lastWord);
-    if(remaining.length===0) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);
-  }
-  const index = remaining[Math.floor(Math.random()*remaining.length)];
-  lastWord = index;
-  return index;
-}
-
-function startQuiz(){
-  quizActive = true;
-  document.getElementById("startBtn").disabled=true;
-  document.getElementById("answer").disabled=false;
-  document.getElementById("answer").focus();
-  direction = document.getElementById("directionSelect").value;
-  repeatTarget = parseInt(document.getElementById("repeatSelect").value);
-  totalCorrect=0;
-  totalAnswers=0;
-  resetCounters();
-  document.getElementById("progressBar").style.width="0%";
-  document.getElementById("finalBarContainer").style.display="none";
-  nextQuestion();
-}
-
-function nextQuestion(){
-  currentWord = pickRandomWord();
-  if(currentWord===null){ endQuiz(); return; }
-  let q = (direction==="en-de") ? vocab[currentWord].en : vocab[currentWord].de;
-  document.getElementById("question").innerText=q;
-  document.getElementById("answer").value="";
-  document.getElementById("answer").focus();
-  document.getElementById("feedback").innerText="";
-}
-
-function checkAnswer(){
-  totalAnswers++;
-  let input = document.getElementById("answer").value.trim().toLowerCase();
-  let correct = (direction==="en-de") ? vocab[currentWord].de.toLowerCase() : vocab[currentWord].en.toLowerCase();
-  if(input===correct){
-    richtigZaehler[currentWord]++;
-    totalCorrect++;
-    document.getElementById("feedback").innerText="✅ Richtig!";
-    document.getElementById("feedback").style.color="green";
+  // ----------------- Vokabeln laden -----------------
+  async function loadVocab(){
+    const {data,error} = await supabaseClient.from('vocab').select('*');
+    if(error){ alert("Fehler beim Laden der Vokabeln."); return; }
+    vocab = data;
+    resetCounters();
     updateProgress();
-  }else{
-    falschZaehler[currentWord]++;
-    document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`;
-    document.getElementById("feedback").style.color="red";
   }
-  saveProgress();
-  setTimeout(nextQuestion,1000);
-}
 
-function updateProgress(){
-  const totalTarget = repeatTarget*vocab.length;
-  const progress = Math.min(100,(totalCorrect/totalTarget)*100);
-  document.getElementById("progressBar").style.width=progress+"%";
-}
+  // ----------------- Fortschritt speichern -----------------
+  async function saveProgress(){
+    if(!currentUser) return;
+    for(let i=0;i<vocab.length;i++){
+      await supabaseClient.from('progress').upsert([{
+        user_id: currentUser.id,
+        vocab_id: vocab[i].id,
+        correct_count: richtigZaehler[i],
+        wrong_count: falschZaehler[i]
+      }]);
+    }
+  }
 
-function endQuiz(){
-  document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉";
-  document.getElementById("answer").disabled=true;
-  document.getElementById("feedback").innerText="";
-  document.getElementById("startBtn").disabled=false;
-  quizActive=false;
-  const correctPercent = totalAnswers ? (totalCorrect/totalAnswers)*100 : 0;
-  document.getElementById("finalBarContainer").style.display="block";
-  document.getElementById("finalCorrect").style.width=correctPercent+"%";
-  document.getElementById("finalWrong").style.width=(100-correctPercent)+"%";
-  document.getElementById("finalPercent").innerText=Math.round(correctPercent)+"% richtig";
-  saveProgress();
-}
+  // ----------------- Quiz-Funktionen -----------------
+  function resetCounters(){ richtigZaehler={}; falschZaehler={}; vocab.forEach((v,i)=>{ richtigZaehler[i]=0; falschZaehler[i]=0; }); totalCorrect=0; totalAnswers=0; updateProgress(); }
 
-// ----------------- Eventlistener -----------------
-document.getElementById("startBtn").addEventListener("click", startQuiz);
-document.getElementById("resetBtn").addEventListener("click", ()=>{
-  resetCounters();
-  totalCorrect=0;
-  totalAnswers=0;
-  updateProgress();
-  document.getElementById("question").innerText="Fortschritt gelöscht – neu starten!";
-});
-document.getElementById("answer").addEventListener("keydown",(e)=>{
-  if(e.key==="Enter") checkAnswer();
-});
+  function pickRandomWord(){ let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); if(remaining.length===0) return null; if(remaining.length>1 && lastWord!==null){ remaining=remaining.filter(i=>i!==lastWord); if(remaining.length===0) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); } lastWord = remaining[Math.floor(Math.random()*remaining.length)]; return lastWord; }
+
+  function startQuiz(){ quizActive=true; document.getElementById("startBtn").disabled=true; document.getElementById("answer").disabled=false; document.getElementById("answer").focus(); direction=document.getElementById("directionSelect").value; repeatTarget=parseInt(document.getElementById("repeatSelect").value); totalCorrect=0; totalAnswers=0; resetCounters(); document.getElementById("progressBar").style.width="0%"; document.getElementById("finalBarContainer").style.display="none"; nextQuestion(); }
+
+  function nextQuestion(){ currentWord=pickRandomWord(); if(currentWord===null){ endQuiz(); return; } let q=(direction==="en-de")? vocab[currentWord].en : vocab[currentWord].de; document.getElementById("question").innerText=q; document.getElementById("answer").value=""; document.getElementById("answer").focus(); document.getElementById("feedback").innerText=""; }
+
+  function checkAnswer(){ totalAnswers++; let input=document.getElementById("answer").value.trim().toLowerCase(); let correct=(direction==="en-de")? vocab[currentWord].de.toLowerCase() : vocab[currentWord].en.toLowerCase(); if(input===correct){ richtigZaehler[currentWord]++; totalCorrect++; document.getElementById("feedback").innerText="✅ Richtig!"; document.getElementById("feedback").style.color="green"; updateProgress(); } else{ falschZaehler[currentWord]++; document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`; document.getElementById("feedback").style.color="red"; } saveProgress(); setTimeout(nextQuestion,1000); }
+
+  function updateProgress(){ const totalTarget=repeatTarget*vocab.length; const progress=Math.min(100,(totalCorrect/totalTarget)*100); document.getElementById("progressBar").style.width=progress+"%"; }
+
+  function endQuiz(){ document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉"; document.getElementById("answer").disabled=true; document.getElementById("feedback").innerText=""; document.getElementById("startBtn").disabled=false; quizActive=false; const correctPercent=totalAnswers ? (totalCorrect/totalAnswers)*100 :0; document.getElementById("finalBarContainer").style.display="block"; document.getElementById("finalCorrect").style.width=correctPercent+"%"; document.getElementById("finalWrong").style.width=(100-correctPercent)+"%"; document.getElementById("finalPercent").innerText=Math.round(correctPercent)+"% richtig"; saveProgress(); }
+
+  // ----------------- Eventlistener -----------------
+  document.getElementById("startBtn").addEventListener("click", startQuiz);
+  document.getElementById("resetBtn").addEventListener("click", ()=>{
+    resetCounters();
+    totalCorrect=0; totalAnswers=0; updateProgress();
+    document.getElementById("question").innerText="Fortschritt gelöscht – neu starten!";
+  });
+  document.getElementById("answer").addEventListener("keydown",(e)=>{ if(e.key==="Enter") checkAnswer(); });
+
+}); // DOMContentLoaded Ende
 </script>
 
 </body>
