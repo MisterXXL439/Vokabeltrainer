@@ -1,46 +1,62 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<title>Supabase User Auth Test</title>
+  <meta charset="UTF-8">
+  <title>Supabase User Test</title>
 </head>
 <body>
-<h1>Benutzerverwaltung Test</h1>
+  <h1>Supabase Benutzerverwaltung</h1>
 
-<h2>Registrieren</h2>
-<input id="regUsername" placeholder="Benutzername">
-<input id="regPassword" type="password" placeholder="Passwort">
-<button id="registerBtn">Registrieren</button>
+  <h2>Registrieren</h2>
+  <input id="regUsername" placeholder="Benutzername">
+  <input id="regPassword" type="password" placeholder="Passwort">
+  <button id="registerBtn">Registrieren</button>
 
-<h2>Login</h2>
-<input id="loginUsername" placeholder="Benutzername">
-<input id="loginPassword" type="password" placeholder="Passwort">
-<button id="loginBtn">Login</button>
+  <h2>Login</h2>
+  <input id="loginUsername" placeholder="Benutzername">
+  <input id="loginPassword" type="password" placeholder="Passwort">
+  <button id="loginBtn">Login</button>
 
-<pre id="output">Noch nichts passiert…</pre>
+  <pre id="output">Noch nichts passiert…</pre>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
   const output = document.getElementById('output');
-  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";   // ersetzen
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";              // ersetzen
+  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";   // <-- einsetzen
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";              // <-- einsetzen
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Hilfsfunktion: Passwort in SHA-256 hashen
+  async function hashPassword(password) {
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  }
 
   // Registrieren
   document.getElementById("registerBtn").addEventListener("click", async () => {
     const username = document.getElementById("regUsername").value;
     const password = document.getElementById("regPassword").value;
 
+    if (!username || !password) {
+      output.innerText = "❌ Bitte Benutzername und Passwort eingeben!";
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+
     const { data, error } = await supabase
       .from("users")
-      .insert([{ username, password, is_active: false }]); // Admin muss aktivieren!
+      .insert([{ username, password_hash: passwordHash, is_active: false }]);
 
-    if(error){
+    if (error) {
       output.innerText = "❌ Fehler beim Registrieren: " + error.message;
     } else {
-      output.innerText = "✅ Benutzer registriert (noch inaktiv): " + JSON.stringify(data, null, 2);
+      output.innerText = "✅ Benutzer registriert (noch inaktiv, Admin muss freischalten):\n"
+        + JSON.stringify(data, null, 2);
     }
   });
 
@@ -49,18 +65,25 @@
     const username = document.getElementById("loginUsername").value;
     const password = document.getElementById("loginPassword").value;
 
+    if (!username || !password) {
+      output.innerText = "❌ Bitte Benutzername und Passwort eingeben!";
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("username", username)
-      .eq("password", password)
+      .eq("password_hash", passwordHash)
       .eq("is_active", true)
       .single();
 
-    if(error || !data){
-      output.innerText = "❌ Login fehlgeschlagen: Benutzer nicht gefunden oder inaktiv.";
+    if (error || !data) {
+      output.innerText = "❌ Login fehlgeschlagen: Benutzer nicht gefunden oder noch nicht aktiviert.";
     } else {
-      output.innerText = "✅ Login erfolgreich: " + JSON.stringify(data, null, 2);
+      output.innerText = "✅ Login erfolgreich:\n" + JSON.stringify(data, null, 2);
     }
   });
 </script>
