@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vokabeltrainer</title>
+
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.7.0/dist/supabase.min.js"></script>
+<!-- bcryptjs für Passwort-Hashing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+
 <style>
 body { font-family: Arial, sans-serif; text-align: center; padding: 30px; background: #f0f4f8; }
 h1 { color: #333; margin-bottom: 10px; font-size: 2.2em; }
@@ -30,6 +34,7 @@ input:focus { outline: none; border-color: #1a73e8; }
 
 <h1>Vokabeltrainer</h1>
 
+<!-- Registrieren/Login -->
 <div id="authDiv">
   <div id="registerDiv">
     <h3>Registrieren</h3>
@@ -51,6 +56,7 @@ input:focus { outline: none; border-color: #1a73e8; }
   </div>
 </div>
 
+<!-- Quiz -->
 <div id="quizDiv" style="display:none;">
   Richtung:
   <select id="directionSelect">
@@ -76,11 +82,12 @@ input:focus { outline: none; border-color: #1a73e8; }
 </div>
 
 <script>
-// ----------------- Supabase Setup -----------------
+// ----------------- Supabase Initialisierung -----------------
 const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co'; // <-- ersetzen
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // <-- ersetzen
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ----------------- Variablen -----------------
 let currentUser = null;
 let vocab = [];
 let richtigZaehler = {};
@@ -99,7 +106,6 @@ document.getElementById("registerBtn").addEventListener("click", async ()=>{
   const password = document.getElementById("regPassword").value.trim();
   if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
 
-  // Passwort hashen
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
 
@@ -185,9 +191,9 @@ async function loadProgress(){
 async function saveProgress(){
   if(!currentUser) return;
   for(let i=0;i<vocab.length;i++){
-    const {data,error} = await supabase
+    await supabase
       .from('progress')
-      .upsert([{user_id:currentUser.id,vocab_id:vocab[i].id,correct_count:richtigZaehler[i],wrong_count:falschZaehler[i]}],{onConflict:['user_id','vocab_id']});
+      .upsert([{user_id:currentUser.id,vocab_id:vocab[i].id,correct_count:richtigZaehler[i],wrong_count:falschZaehler[i]}]);
   }
 }
 
@@ -195,39 +201,46 @@ async function saveProgress(){
 function resetCounters(){
   richtigZaehler = {};
   falschZaehler = {};
-  vocab.forEach((v,i)=>{richtigZaehler[i]=0;falschZaehler[i]=0;});
+  vocab.forEach((v,i)=>{
+    richtigZaehler[i]=0;
+    falschZaehler[i]=0;
+  });
+  totalCorrect=0;
+  totalAnswers=0;
+  updateProgress();
 }
 
 function pickRandomWord(){
-  let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);
+  let remaining = vocab.map((_,i)=>i).filter(i => richtigZaehler[i]<repeatTarget);
   if(remaining.length===0) return null;
   if(remaining.length>1 && lastWord!==null){
     remaining = remaining.filter(i=>i!==lastWord);
-    if(remaining.length===0) remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);
+    if(remaining.length===0) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);
   }
   const index = remaining[Math.floor(Math.random()*remaining.length)];
-  lastWord=index;
+  lastWord = index;
   return index;
 }
 
 function startQuiz(){
-  quizActive=true;
+  quizActive = true;
   document.getElementById("startBtn").disabled=true;
   document.getElementById("answer").disabled=false;
   document.getElementById("answer").focus();
   direction = document.getElementById("directionSelect").value;
   repeatTarget = parseInt(document.getElementById("repeatSelect").value);
-  totalCorrect=0; totalAnswers=0;
+  totalCorrect=0;
+  totalAnswers=0;
   resetCounters();
   document.getElementById("progressBar").style.width="0%";
   document.getElementById("finalBarContainer").style.display="none";
-  loadProgress().then(()=>nextQuestion());
+  nextQuestion();
 }
 
 function nextQuestion(){
   currentWord = pickRandomWord();
   if(currentWord===null){ endQuiz(); return; }
-  let q = (direction==="en-de")?vocab[currentWord].en:vocab[currentWord].de;
+  let q = (direction==="en-de") ? vocab[currentWord].en : vocab[currentWord].de;
   document.getElementById("question").innerText=q;
   document.getElementById("answer").value="";
   document.getElementById("answer").focus();
@@ -237,19 +250,19 @@ function nextQuestion(){
 function checkAnswer(){
   totalAnswers++;
   let input = document.getElementById("answer").value.trim().toLowerCase();
-  let correct = (direction==="en-de")?vocab[currentWord].de.toLowerCase():vocab[currentWord].en.toLowerCase();
+  let correct = (direction==="en-de") ? vocab[currentWord].de.toLowerCase() : vocab[currentWord].en.toLowerCase();
   if(input===correct){
     richtigZaehler[currentWord]++;
     totalCorrect++;
     document.getElementById("feedback").innerText="✅ Richtig!";
     document.getElementById("feedback").style.color="green";
+    updateProgress();
   }else{
     falschZaehler[currentWord]++;
     document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`;
     document.getElementById("feedback").style.color="red";
   }
   saveProgress();
-  updateProgress();
   setTimeout(nextQuestion,1000);
 }
 
@@ -265,23 +278,26 @@ function endQuiz(){
   document.getElementById("feedback").innerText="";
   document.getElementById("startBtn").disabled=false;
   quizActive=false;
-  const correctPercent = totalAnswers? (totalCorrect/totalAnswers)*100 : 0;
+  const correctPercent = totalAnswers ? (totalCorrect/totalAnswers)*100 : 0;
   document.getElementById("finalBarContainer").style.display="block";
-  document.getElementById("finalCorrect").style.width = correctPercent+"%";
-  document.getElementById("finalWrong").style.width = (100-correctPercent)+"%";
-  document.getElementById("finalPercent").innerText = Math.round(correctPercent)+"% richtig";
+  document.getElementById("finalCorrect").style.width=correctPercent+"%";
+  document.getElementById("finalWrong").style.width=(100-correctPercent)+"%";
+  document.getElementById("finalPercent").innerText=Math.round(correctPercent)+"% richtig";
+  saveProgress();
 }
 
+// ----------------- Eventlistener -----------------
 document.getElementById("startBtn").addEventListener("click", startQuiz);
 document.getElementById("resetBtn").addEventListener("click", ()=>{
   resetCounters();
-  totalCorrect=0; totalAnswers=0;
-  saveProgress();
+  totalCorrect=0;
+  totalAnswers=0;
   updateProgress();
   document.getElementById("question").innerText="Fortschritt gelöscht – neu starten!";
 });
-
-document.getElementById("answer").addEventListener("keydown",(e)=>{if(e.key==="Enter") checkAnswer();});
+document.getElementById("answer").addEventListener("keydown",(e)=>{
+  if(e.key==="Enter") checkAnswer();
+});
 </script>
 
 </body>
