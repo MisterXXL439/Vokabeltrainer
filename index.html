@@ -21,6 +21,7 @@ nav {
     display: flex;
     flex-direction: column;
     padding: 20px;
+    display: none; /* versteckt das Menü vor Login */
 }
 
 nav h2 {
@@ -124,7 +125,7 @@ th, td {
 </head>
 <body>
 
-<nav>
+<nav id="menu">
     <h2><i class="fa-solid fa-book"></i> Menü</h2>
     <a href="#" id="navTrainer"><i class="fa-solid fa-chalkboard"></i> Vokabeltrainer</a>
     <a href="#" id="navProgress"><i class="fa-solid fa-chart-line"></i> Fortschritt</a>
@@ -133,7 +134,7 @@ th, td {
 </nav>
 
 <main>
-    <!-- Registrierung/Login -->
+    <!-- Anmeldung -->
     <section id="authSection">
         <h1>Benutzerkonto</h1>
         <input id="username" placeholder="Benutzername">
@@ -172,7 +173,10 @@ th, td {
     <!-- Account verwalten -->
     <section id="accountSection" style="display:none;">
         <h1>Account verwalten</h1>
-        <div id="accountContent">Lade Accountdaten...</div>
+        <input id="newUsername" placeholder="Neuer Benutzername">
+        <input id="newPassword" type="password" placeholder="Neues Passwort">
+        <button id="updateAccountBtn">Speichern</button>
+        <div id="accountContent"></div>
     </section>
 
     <!-- Vokabeln nach Chapter -->
@@ -191,22 +195,10 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let vocab = [];
-let richtigZaehler = {};
-let falschZaehler = {};
-let repeatTarget = 3;
-let currentWord = null;
-let lastWord = null;
-let totalCorrect = 0;
-let totalAnswers = 0;
-let direction = "en-de";
-let quizActive = false;
-
-const authOutput = document.getElementById("authOutput");
 
 // Navigation
 document.getElementById("navTrainer").addEventListener("click", ()=>showSection("trainerSection"));
@@ -223,27 +215,44 @@ function showSection(id){
 document.getElementById("registerBtn").addEventListener("click", async ()=>{
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
-    if(!username||!password){ authOutput.innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
+    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
     const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
     const { data, error } = await supabase.from("users").insert([{username,password_hash,is_active:false}]).select();
-    authOutput.innerText = error? "Fehler: "+error.message : "Benutzer registriert, Admin muss freischalten";
+    document.getElementById("authOutput").innerText = error? "Fehler: "+error.message : "Benutzer registriert, Admin muss freischalten";
 });
 
 // Login
 document.getElementById("loginBtn").addEventListener("click", async ()=>{
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
-    if(!username||!password){ authOutput.innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
+    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
     const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
     const { data, error } = await supabase.from("users").select("*")
         .eq("username",username).eq("password_hash",password_hash).eq("is_active",true).single();
-    if(error){ authOutput.innerText="Login fehlgeschlagen: "+error.message; return;}
+    if(error){ document.getElementById("authOutput").innerText="Login fehlgeschlagen: "+error.message; return;}
     currentUser = data;
-    authOutput.innerText = "Login erfolgreich! Willkommen "+currentUser.username;
+    document.getElementById("authOutput").innerText = "Login erfolgreich! Willkommen "+currentUser.username;
+    document.getElementById("menu").style.display="flex"; // Menü einblenden
     showSection("trainerSection");
     loadVocab();
+});
+
+// Account ändern
+document.getElementById("updateAccountBtn").addEventListener("click", async ()=>{
+    if(!currentUser) return;
+    const newUsername = document.getElementById("newUsername").value.trim() || currentUser.username;
+    const newPassword = document.getElementById("newPassword").value;
+    let updates = {username:newUsername};
+    if(newPassword){
+        const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(newPassword));
+        updates.password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    const { data, error } = await supabase.from("users").update(updates).eq("id",currentUser.id).select();
+    if(error){ document.getElementById("accountContent").innerText="Fehler: "+error.message; return; }
+    currentUser = data[0];
+    document.getElementById("accountContent").innerText="Daten erfolgreich aktualisiert!";
 });
 
 // Vokabeln laden
@@ -268,7 +277,9 @@ async function loadProgress(){
 // Account anzeigen
 function loadAccount(){
     if(!currentUser) return;
-    document.getElementById("accountContent").innerText = `Benutzer: ${currentUser.username}\nAktiv: ${currentUser.is_active}`;
+    document.getElementById("newUsername").value = currentUser.username;
+    document.getElementById("newPassword").value = "";
+    document.getElementById("accountContent").innerText = "";
 }
 
 // Vokabel-Tabelle nach Chapter
@@ -285,9 +296,6 @@ function loadVocabTable(){
     };
     chapterSelect.dispatchEvent(new Event("change"));
 }
-
-// Hier könnte noch der Vokabeltrainer-Logik-Code ergänzt werden (wie oben)
 </script>
-
 </body>
 </html>
