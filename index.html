@@ -2,31 +2,67 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Supabase Users Test</title>
+<title>Supabase User Auth Test</title>
 </head>
 <body>
-<h1>Supabase Users Test</h1>
-<pre id="output">Lade...</pre>
+<h1>Benutzerverwaltung Test</h1>
+
+<h2>Registrieren</h2>
+<input id="regUsername" placeholder="Benutzername">
+<input id="regPassword" type="password" placeholder="Passwort">
+<button id="registerBtn">Registrieren</button>
+
+<h2>Login</h2>
+<input id="loginUsername" placeholder="Benutzername">
+<input id="loginPassword" type="password" placeholder="Passwort">
+<button id="loginBtn">Login</button>
+
+<pre id="output">Noch nichts passiert…</pre>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
   const output = document.getElementById('output');
-  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";  // ersetzen
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";             // ersetzen
+  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";   // ersetzen
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";              // ersetzen
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  try {
-    const { data, error } = await supabase.from("users").select("*").limit(5);
-    if (error) {
-      output.innerText = "❌ Fehler: " + error.message;
+  // Registrieren
+  document.getElementById("registerBtn").addEventListener("click", async () => {
+    const username = document.getElementById("regUsername").value;
+    const password = document.getElementById("regPassword").value;
+
+    const { data, error } = await supabase
+      .from("users")
+      .insert([{ username, password, is_active: false }]); // Admin muss aktivieren!
+
+    if(error){
+      output.innerText = "❌ Fehler beim Registrieren: " + error.message;
     } else {
-      output.innerText = "✅ Daten empfangen:\n" + JSON.stringify(data, null, 2);
+      output.innerText = "✅ Benutzer registriert (noch inaktiv): " + JSON.stringify(data, null, 2);
     }
-  } catch (e) {
-    output.innerText = "❌ Exception: " + e.message;
-  }
+  });
+
+  // Login
+  document.getElementById("loginBtn").addEventListener("click", async () => {
+    const username = document.getElementById("loginUsername").value;
+    const password = document.getElementById("loginPassword").value;
+
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", username)
+      .eq("password", password)
+      .eq("is_active", true)
+      .single();
+
+    if(error || !data){
+      output.innerText = "❌ Login fehlgeschlagen: Benutzer nicht gefunden oder inaktiv.";
+    } else {
+      output.innerText = "✅ Login erfolgreich: " + JSON.stringify(data, null, 2);
+    }
+  });
 </script>
 </body>
 </html>
