@@ -6,188 +6,90 @@
 <title>Vokabeltrainer</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-body {
-    margin: 0;
-    font-family: 'Arial', sans-serif;
-    background: #f0f4f8;
-    display: flex;
-    height: 100vh;
-}
-
-nav {
-    width: 250px;
-    background: #1a73e8;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    display: none; /* versteckt das Menü vor Login */
-}
-
-nav h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 1.5em;
-}
-
-nav a {
-    color: white;
-    text-decoration: none;
-    margin: 10px 0;
-    font-size: 1.1em;
-    display: flex;
-    align-items: center;
-}
-
-nav a i {
-    margin-right: 10px;
-}
-
-nav a:hover {
-    color: #ffeb3b;
-}
-
-main {
-    flex: 1;
-    padding: 30px;
-    overflow-y: auto;
-}
-
-h1 {
-    color: #333;
-}
-
-section {
-    background: white;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-input, select, button {
-    font-size: 1em;
-    padding: 8px 12px;
-    margin: 5px 0;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-}
-
-button {
-    background: #1a73e8;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #1665c1;
-}
-
-#progressBarContainer {
-    width: 100%;
-    height: 25px;
-    background: #ddd;
-    border-radius: 15px;
-    overflow: hidden;
-    margin-top: 15px;
-}
-
-#progressBar {
-    height: 100%;
-    background: #34a853;
-    width: 0%;
-    transition: width 0.3s;
-}
-
-#question {
-    font-size: 1.5em;
-    color: #1a73e8;
-    margin: 20px 0;
-}
-
-#feedback {
-    font-size: 1.2em;
-    min-height: 24px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th, td {
-    padding: 8px 12px;
-    border-bottom: 1px solid #ccc;
-    text-align: left;
-}
+body { margin:0; font-family:Arial,sans-serif; background:#f0f4f8; display:flex; height:100vh; }
+nav { width:250px; background:#1a73e8; color:white; display:flex; flex-direction:column; padding:20px; display:none; }
+nav h2 { margin-top:0; margin-bottom:20px; font-size:1.5em; }
+nav a { color:white; text-decoration:none; margin:10px 0; font-size:1.1em; display:flex; align-items:center; }
+nav a i { margin-right:10px; }
+nav a:hover { color:#ffeb3b; }
+main { flex:1; padding:30px; overflow-y:auto; }
+h1 { color:#333; }
+section { background:white; padding:20px; margin-bottom:20px; border-radius:12px; box-shadow:0 4px 8px rgba(0,0,0,0.1); }
+input,select,button { font-size:1em; padding:8px 12px; margin:5px 0; border-radius:8px; border:1px solid #ccc; }
+button { background:#1a73e8; color:white; border:none; cursor:pointer; }
+button:hover { background:#1665c1; }
+#progressBarContainer { width:100%; height:25px; background:#ddd; border-radius:15px; overflow:hidden; margin-top:15px; }
+#progressBar { height:100%; background:#34a853; width:0%; transition:width 0.3s; }
+#question { font-size:1.5em; color:#1a73e8; margin:20px 0; }
+#feedback { font-size:1.2em; min-height:24px; }
+table { width:100%; border-collapse:collapse; }
+th,td { padding:8px 12px; border-bottom:1px solid #ccc; text-align:left; }
+th { cursor:pointer; }
 </style>
 </head>
 <body>
 
 <nav id="menu">
-    <h2><i class="fa-solid fa-book"></i> Menü</h2>
-    <a href="#" id="navTrainer"><i class="fa-solid fa-chalkboard"></i> Vokabeltrainer</a>
-    <a href="#" id="navProgress"><i class="fa-solid fa-chart-line"></i> Fortschritt</a>
-    <a href="#" id="navAccount"><i class="fa-solid fa-user"></i> Account verwalten</a>
-    <a href="#" id="navVocab"><i class="fa-solid fa-list"></i> Vokabeln nach Chapter</a>
+<h2><i class="fa-solid fa-book"></i> Menü</h2>
+<a href="#" id="navTrainer"><i class="fa-solid fa-chalkboard"></i> Vokabeltrainer</a>
+<a href="#" id="navProgress"><i class="fa-solid fa-chart-line"></i> Fortschritt</a>
+<a href="#" id="navAccount"><i class="fa-solid fa-user"></i> Account verwalten</a>
+<a href="#" id="navVocab"><i class="fa-solid fa-list"></i> Vokabeln nach Chapter</a>
 </nav>
 
 <main>
-    <!-- Anmeldung -->
-    <section id="authSection">
-        <h1>Benutzerkonto</h1>
-        <input id="username" placeholder="Benutzername">
-        <input id="password" type="password" placeholder="Passwort"><br>
-        <button id="registerBtn">Registrieren</button>
-        <button id="loginBtn">Login</button>
-        <pre id="authOutput"></pre>
-    </section>
+<!-- Anmeldung -->
+<section id="authSection">
+<h1>Benutzerkonto</h1>
+<input id="username" placeholder="Benutzername">
+<input id="password" type="password" placeholder="Passwort"><br>
+<button id="registerBtn">Registrieren</button>
+<button id="loginBtn">Login</button>
+<pre id="authOutput"></pre>
+</section>
 
-    <!-- Vokabeltrainer -->
-    <section id="trainerSection" style="display:none;">
-        <h1>Vokabeltrainer</h1>
-        Richtung:
-        <select id="directionSelect">
-            <option value="en-de">Englisch → Deutsch</option>
-            <option value="de-en">Deutsch → Englisch</option>
-        </select>
-        Wiederholungen:
-        <select id="repeatSelect"></select>
-        <button id="startBtn">Start</button>
+<!-- Vokabeltrainer -->
+<section id="trainerSection" style="display:none;">
+<h1>Vokabeltrainer</h1>
+Richtung:
+<select id="directionSelect">
+<option value="en-de">Englisch → Deutsch</option>
+<option value="de-en">Deutsch → Englisch</option>
+</select>
+Wiederholungen:
+<select id="repeatSelect"></select>
+<button id="startBtn">Start</button>
 
-        <div id="question"></div>
-        <input type="text" id="answer" placeholder="Antwort" disabled>
-        <div id="feedback"></div>
-        <div id="progressBarContainer">
-            <div id="progressBar"></div>
-        </div>
-    </section>
+<div id="question"></div>
+<input type="text" id="answer" placeholder="Antwort" disabled>
+<div id="feedback"></div>
+<div id="progressBarContainer"><div id="progressBar"></div></div>
+</section>
 
-    <!-- Fortschritt -->
-    <section id="progressSection" style="display:none;">
-        <h1>Fortschritt</h1>
-        <div id="progressContent">Lade Fortschritt...</div>
-    </section>
+<!-- Fortschritt -->
+<section id="progressSection" style="display:none;">
+<h1>Fortschritt</h1>
+<div id="progressContent">Lade Fortschritt...</div>
+</section>
 
-    <!-- Account verwalten -->
-    <section id="accountSection" style="display:none;">
-        <h1>Account verwalten</h1>
-        <input id="newUsername" placeholder="Neuer Benutzername">
-        <input id="newPassword" type="password" placeholder="Neues Passwort">
-        <button id="updateAccountBtn">Speichern</button>
-        <div id="accountContent"></div>
-    </section>
+<!-- Account verwalten -->
+<section id="accountSection" style="display:none;">
+<h1>Account verwalten</h1>
+<input id="newUsername" placeholder="Neuer Benutzername">
+<input id="newPassword" type="password" placeholder="Neues Passwort">
+<button id="updateAccountBtn">Speichern</button>
+<div id="accountContent"></div>
+</section>
 
-    <!-- Vokabeln nach Chapter -->
-    <section id="vocabSection" style="display:none;">
-        <h1>Vokabeln nach Chapter</h1>
-        <select id="chapterSelect"><option value="">Alle Chapters</option></select>
-        <table id="vocabTable">
-            <thead><tr><th>Englisch</th><th>Deutsch</th><th>Chapter</th></tr></thead>
-            <tbody></tbody>
-        </table>
-    </section>
+<!-- Vokabeln nach Chapter -->
+<section id="vocabSection" style="display:none;">
+<h1>Vokabeln nach Chapter</h1>
+<select id="chapterSelect"><option value="">Alle Chapters</option></select>
+<table id="vocabTable">
+<thead><tr><th>Englisch</th><th>Deutsch</th><th>Chapter</th></tr></thead>
+<tbody></tbody>
+</table>
+</section>
 </main>
 
 <script type="module">
@@ -199,6 +101,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let vocab = [];
+let richtigZaehler = {};
+let falschZaehler = {};
+let repeatTarget = 3;
+let currentWord = null;
+let lastWord = null;
+let totalCorrect = 0;
+let totalAnswers = 0;
+let direction = "en-de";
+let quizActive = false;
 
 // Navigation
 document.getElementById("navTrainer").addEventListener("click", ()=>showSection("trainerSection"));
@@ -215,7 +126,7 @@ function showSection(id){
 document.getElementById("registerBtn").addEventListener("click", async ()=>{
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
-    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
+    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzername und Passwort eingeben"; return;}
     const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
     const { data, error } = await supabase.from("users").insert([{username,password_hash,is_active:false}]).select();
@@ -226,7 +137,7 @@ document.getElementById("registerBtn").addEventListener("click", async ()=>{
 document.getElementById("loginBtn").addEventListener("click", async ()=>{
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
-    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzernamen und Passwort eingeben"; return;}
+    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzername und Passwort eingeben"; return;}
     const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
     const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
     const { data, error } = await supabase.from("users").select("*")
@@ -234,9 +145,11 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
     if(error){ document.getElementById("authOutput").innerText="Login fehlgeschlagen: "+error.message; return;}
     currentUser = data;
     document.getElementById("authOutput").innerText = "Login erfolgreich! Willkommen "+currentUser.username;
-    document.getElementById("menu").style.display="flex"; // Menü einblenden
+    document.getElementById("menu").style.display="flex";
     showSection("trainerSection");
-    loadVocab();
+    await loadVocab();
+    resetCounters();
+    updateProgress();
 });
 
 // Account ändern
@@ -257,12 +170,9 @@ document.getElementById("updateAccountBtn").addEventListener("click", async ()=>
 
 // Vokabeln laden
 async function loadVocab(){
-    const { data, error } = await supabase.from("vocab").select("*");
-    if(error) return console.error(error);
+    const { data, error } = await supabase.from("vocab").select("*").order('chapter',{ascending:true});
+    if(error){ console.error(error); return; }
     vocab = data;
-    const repeatSelect = document.getElementById("repeatSelect");
-    repeatSelect.innerHTML="";
-    for(let i=1;i<=5;i++){ repeatSelect.innerHTML+=`<option value="${i}" ${i===3?'selected':''}>${i}</option>`;}
 }
 
 // Fortschritt anzeigen
@@ -286,16 +196,30 @@ function loadAccount(){
 function loadVocabTable(){
     const tbody = document.querySelector("#vocabTable tbody");
     tbody.innerHTML="";
-    const chapters = [...new Set(vocab.map(v=>v.chapter).filter(Boolean))];
     const chapterSelect = document.getElementById("chapterSelect");
+    const chapters = [...new Set(vocab.map(v=>v.chapter).sort((a,b)=>a-b))];
     chapterSelect.innerHTML=`<option value="">Alle Chapters</option>`+chapters.map(c=>`<option value="${c}">${c}</option>`).join("");
     chapterSelect.onchange = ()=>{
         const selected = chapterSelect.value;
-        const filtered = selected? vocab.filter(v=>v.chapter===selected) : vocab;
-        tbody.innerHTML = filtered.map(v=>`<tr><td>${v.en}</td><td>${v.de}</td><td>${v.chapter||""}</td></tr>`).join("");
+        const filtered = selected? vocab.filter(v=>v.chapter==selected) : vocab;
+        tbody.innerHTML = filtered.map(v=>`<tr><td>${v.en}</td><td>${v.de}</td><td>${v.chapter}</td></tr>`).join("");
     };
     chapterSelect.dispatchEvent(new Event("change"));
 }
+
+// --- Vokabeltrainer Logik ---
+document.getElementById("startBtn").addEventListener("click", startQuiz);
+document.getElementById("answer").addEventListener("keydown", e=>{if(e.key==="Enter") checkAnswer();});
+
+for(let i=1;i<=5;i++){ document.getElementById("repeatSelect").innerHTML+=`<option value="${i}" ${i===3?'selected':''}>${i}</option>`; }
+
+function resetCounters(){ richtigZaehler={}; falschZaehler={}; vocab.forEach((v,i)=>{richtigZaehler[i]=0; falschZaehler[i]=0;}); totalCorrect=0; totalAnswers=0; }
+function pickRandomWord(){ let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); if(remaining.length===0)return null; if(lastWord!==null && remaining.length>1){ remaining = remaining.filter(i=>i!==lastWord); if(!remaining.length) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);} const idx = remaining[Math.floor(Math.random()*remaining.length)]; lastWord=idx; return idx;}
+function startQuiz(){ quizActive=true; document.getElementById("startBtn").disabled=true; document.getElementById("answer").disabled=false; document.getElementById("answer").focus(); direction=document.getElementById("directionSelect").value; repeatTarget=parseInt(document.getElementById("repeatSelect").value); resetCounters(); updateProgress(); nextQuestion();}
+function nextQuestion(){ currentWord=pickRandomWord(); if(currentWord===null){ endQuiz(); return;} document.getElementById("question").innerText=(direction==="en-de"?vocab[currentWord].en:vocab[currentWord].de); document.getElementById("answer").value=""; document.getElementById("answer").focus(); document.getElementById("feedback").innerText="";}
+function checkAnswer(){ totalAnswers++; let input=document.getElementById("answer").value.trim().toLowerCase(); let correct=(direction==="en-de"?vocab[currentWord].de.toLowerCase():vocab[currentWord].en.toLowerCase()); if(input===correct){ richtigZaehler[currentWord]++; totalCorrect++; document.getElementById("feedback").innerText="✅ Richtig!"; document.getElementById("feedback").style.color="green"; }else{ falschZaehler[currentWord]++; document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`; document.getElementById("feedback").style.color="red";} updateProgress(); setTimeout(nextQuestion,1000);}
+function updateProgress(){ const totalTarget = repeatTarget*vocab.length; const progress = Math.min(100,(totalCorrect/totalTarget)*100); document.getElementById("progressBar").style.width=progress+"%";}
+function endQuiz(){ quizActive=false; document.getElementById("startBtn").disabled=false; document.getElementById("answer").disabled=true; document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉";}
 </script>
 </body>
 </html>
