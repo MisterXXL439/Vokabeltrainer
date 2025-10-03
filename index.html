@@ -1,97 +1,171 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Supabase User Login Test</title>
+<meta charset="UTF-8">
+<title>Vokabeltrainer mit Supabase</title>
+<style>
+body { font-family: Arial; text-align: center; padding: 30px; background: #f0f4f8; }
+input, button { font-size: 1.1em; padding: 8px 12px; margin: 5px; border-radius: 6px; }
+button { cursor: pointer; }
+#progressBarContainer { width: 80%; max-width: 400px; height: 25px; background: #ccc; margin: 20px auto; border-radius: 15px; overflow: hidden; }
+#progressBar { width: 0%; height: 100%; background: #34a853; transition: width 0.3s; }
+</style>
 </head>
 <body>
-  <h1>Supabase User Testseite</h1>
 
-  <h2>Registrieren</h2>
-  <input id="regUsername" placeholder="Benutzername">
-  <input id="regPassword" type="password" placeholder="Passwort">
-  <button id="registerBtn">Registrieren</button>
+<h1>Vokabeltrainer</h1>
 
-  <h2>Login</h2>
-  <input id="loginUsername" placeholder="Benutzername">
-  <input id="loginPassword" type="password" placeholder="Passwort">
-  <button id="loginBtn">Login</button>
+<div id="authDiv">
+<h2>Registrieren / Login</h2>
+<input id="username" placeholder="Benutzername">
+<input id="password" type="password" placeholder="Passwort"><br>
+<button id="registerBtn">Registrieren</button>
+<button id="loginBtn">Login</button>
+<pre id="authOutput"></pre>
+</div>
 
-  <h2>Ausgabe</h2>
-  <pre id="output">Noch nichts passiert…</pre>
+<div id="trainerDiv" style="display:none;">
+<h2>Vokabeltrainer</h2>
+Richtung: 
+<select id="directionSelect">
+  <option value="en-de">Englisch → Deutsch</option>
+  <option value="de-en">Deutsch → Englisch</option>
+</select>
+Wiederholungen: 
+<select id="repeatSelect"></select>
+<button id="startBtn">Start</button>
+<div id="question"></div>
+<input type="text" id="answer" placeholder="Antwort" disabled>
+<div id="feedback"></div>
+<div id="progressBarContainer"><div id="progressBar"></div></div>
+</div>
 
 <script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-  const output = document.getElementById('output');
-  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";   // <-- einsetzen
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";              // <-- einsetzen
+const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Hilfsfunktion: Passwort in SHA-256 hashen
-  async function hashPassword(password) {
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+const authOutput = document.getElementById("authOutput");
+const trainerDiv = document.getElementById("trainerDiv");
+const authDiv = document.getElementById("authDiv");
+
+let currentUser = null;
+let vocab = [];
+let richtigZaehler = {};
+let falschZaehler = {};
+let repeatTarget = 3;
+let currentWord = null;
+let lastWord = null;
+let totalCorrect = 0;
+let totalAnswers = 0;
+let direction = "en-de";
+let quizActive = false;
+
+// --- Registrierung ---
+document.getElementById("registerBtn").addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  if(!username || !password){ authOutput.innerText="❌ Bitte Benutzername und Passwort eingeben!"; return; }
+
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+
+  const { data, error } = await supabase.from("users").insert([{ username, password_hash, is_active:false }]).select();
+  if(error){ authOutput.innerText = "❌ Fehler beim Registrieren: "+error.message; }
+  else{ authOutput.innerText = "✅ Benutzer registriert (noch inaktiv):\n"+JSON.stringify(data,null,2); }
+});
+
+// --- Login ---
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+  if(!username || !password){ authOutput.innerText="❌ Bitte Benutzername und Passwort eingeben!"; return; }
+
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+  const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+
+  const { data, error } = await supabase.from("users").select("*")
+    .eq("username",username).eq("password_hash",password_hash).eq("is_active",true).single();
+
+  if(error){ authOutput.innerText="❌ Login fehlgeschlagen: "+error.message; return; }
+  currentUser = data;
+  authOutput.innerText = "✅ Login erfolgreich! Willkommen "+currentUser.username;
+  authDiv.style.display="none";
+  trainerDiv.style.display="block";
+  loadVocab();
+});
+
+// --- Vokabeln laden ---
+async function loadVocab(){
+  const { data, error } = await supabase.from("vocab").select("*");
+  if(error){ console.error(error); return; }
+  vocab = data;
+  resetCounters();
+  // Wiederholungsdropdown
+  const repeatSelect = document.getElementById("repeatSelect");
+  repeatSelect.innerHTML="";
+  for(let i=1;i<=5;i++){ repeatSelect.innerHTML+=`<option value="${i}" ${i===3?'selected':''}>${i}</option>`; }
+}
+
+// --- Quiz-Funktionen ---
+function resetCounters(){
+  richtigZaehler={};
+  falschZaehler={};
+  vocab.forEach((v,i)=>{ richtigZaehler[i]=0; falschZaehler[i]=0; });
+}
+
+function pickRandomWord(){
+  let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);
+  if(remaining.length===0) return null;
+  if(remaining.length>1 && lastWord!==null){ remaining=remaining.filter(i=>i!==lastWord); if(remaining.length===0) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); }
+  const index = remaining[Math.floor(Math.random()*remaining.length)];
+  lastWord=index;
+  return index;
+}
+
+function updateProgress(){
+  const totalTarget = repeatTarget*vocab.length;
+  const progress = Math.min(100,(totalCorrect/totalTarget)*100);
+  document.getElementById("progressBar").style.width=progress+"%";
+}
+
+function saveProgressToDB(vocab_id, correct){
+  if(!currentUser) return;
+  supabase.from("progress").upsert([{user_id:currentUser.id, vocab_id, correct_count: correct?1:0, wrong_count: correct?0:1}],{onConflict:["user_id","vocab_id"]});
+}
+
+function nextQuestion(){
+  currentWord = pickRandomWord();
+  if(currentWord===null){ document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉"; document.getElementById("answer").disabled=true; return; }
+  document.getElementById("question").innerText = direction==="en-de"? vocab[currentWord].en : vocab[currentWord].de;
+  document.getElementById("answer").value="";
+  document.getElementById("answer").disabled=false;
+  document.getElementById("answer").focus();
+  document.getElementById("feedback").innerText="";
+}
+
+document.getElementById("startBtn").addEventListener("click", ()=>{
+  direction = document.getElementById("directionSelect").value;
+  repeatTarget = parseInt(document.getElementById("repeatSelect").value);
+  totalCorrect=0; totalAnswers=0;
+  resetCounters();
+  nextQuestion();
+});
+
+document.getElementById("answer").addEventListener("keydown",(e)=>{
+  if(e.key==="Enter"){
+    const input = document.getElementById("answer").value.trim().toLowerCase();
+    const correct = direction==="en-de"? vocab[currentWord].de.toLowerCase() : vocab[currentWord].en.toLowerCase();
+    totalAnswers++;
+    if(input===correct){ richtigZaehler[currentWord]++; totalCorrect++; document.getElementById("feedback").innerText="✅ Richtig!"; saveProgressToDB(vocab[currentWord].id,true);}
+    else{ falschZaehler[currentWord]++; document.getElementById("feedback").innerText="❌ Falsch! Richtige Antwort: "+correct; saveProgressToDB(vocab[currentWord].id,false);}
+    updateProgress();
+    setTimeout(nextQuestion,500);
   }
-
-  // Registrieren
-  document.getElementById("registerBtn").addEventListener("click", async () => {
-    const username = document.getElementById("regUsername").value.trim();
-    const password = document.getElementById("regPassword").value;
-
-    if (!username || !password) {
-      output.innerText = "❌ Bitte Benutzername und Passwort eingeben!";
-      return;
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    const { data, error } = await supabase
-      .from("users")
-      .insert([{ username, password_hash: passwordHash, is_active: false }])
-      .select();
-
-    if (error) {
-      output.innerText = "❌ Fehler beim Registrieren: " + error.message;
-    } else {
-      output.innerText = "✅ Benutzer registriert (noch inaktiv):\n"
-        + JSON.stringify(data, null, 2);
-    }
-  });
-
-  // Login
-  document.getElementById("loginBtn").addEventListener("click", async () => {
-    const username = document.getElementById("loginUsername").value.trim();
-    const password = document.getElementById("loginPassword").value;
-
-    if (!username || !password) {
-      output.innerText = "❌ Bitte Benutzername und Passwort eingeben!";
-      return;
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    // Debug: zeigen, was wir suchen
-    output.innerText = `🔎 Suche nach Benutzer:\nusername=${username}\npassword_hash=${passwordHash}\n`;
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("username", username)
-      .eq("password_hash", passwordHash)
-      .eq("is_active", true);
-
-    if (error) {
-      output.innerText += "❌ Fehler: " + error.message;
-    } else if (!data || data.length === 0) {
-      output.innerText += "❌ Kein aktiver Benutzer mit diesen Daten gefunden.";
-    } else {
-      output.innerText += "✅ Login erfolgreich!\n" + JSON.stringify(data, null, 2);
-    }
-  });
+});
 </script>
 </body>
 </html>
