@@ -3,66 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supabase Fehlerprüfung</title>
-<style>
-body { font-family: Arial; text-align: center; padding: 30px; background: #f0f4f8; }
-h1 { color: #333; }
-.status { margin: 10px; padding: 10px; border-radius: 8px; }
-.success { background-color: #d4edda; color: #155724; }
-.error { background-color: #f8d7da; color: #721c24; }
-</style>
+<title>Supabase Ping Test</title>
 </head>
 <body>
-<h1>Supabase Fehlerprüfung</h1>
-<div id="sdkStatus" class="status">Supabase SDK: unbekannt</div>
-<div id="clientStatus" class="status">Supabase Client: unbekannt</div>
-<div id="tableStatus" class="status">Tabelle "users": unbekannt</div>
+<h1>Supabase Ping Test</h1>
+<div id="status">Status unbekannt</div>
 
-<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.7.0/dist/supabase.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1️⃣ Prüfen, ob Supabase SDK geladen ist
-    if(typeof supabase !== 'undefined'){
-        document.getElementById('sdkStatus').innerText = "Supabase SDK geladen ✅";
-        document.getElementById('sdkStatus').className = "status success";
-    } else {
-        document.getElementById('sdkStatus').innerText = "Supabase SDK NICHT geladen ❌";
-        document.getElementById('sdkStatus').className = "status error";
+    const statusDiv = document.getElementById('status');
+
+    if(typeof supabase === 'undefined'){
+        statusDiv.innerText = "❌ Supabase SDK nicht geladen!";
         return;
     }
 
-    // 2️⃣ Supabase Client erstellen
-    const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.coo'; // ersetzen
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // ersetzen
-    let supabaseClient;
-    try {
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        document.getElementById('clientStatus').innerText = "Supabase Client erstellt ✅";
-        document.getElementById('clientStatus').className = "status success";
-    } catch(e) {
-        document.getElementById('clientStatus').innerText = "Fehler beim Erstellen des Clients ❌: " + e.message;
-        document.getElementById('clientStatus').className = "status error";
-        return;
-    }
+    statusDiv.innerText = "✅ Supabase SDK geladen\n";
 
-    // 3️⃣ Testabfrage: Tabelle "users"
+    const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co"; // ersetze
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ"; // ersetze
+
     try {
-        const { data, error } = await supabaseClient.from('users').select('*').limit(1);
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        statusDiv.innerText += "✅ Client erstellt\n";
+
+        // Minimalabfrage: Healthcheck via RPC (ping)
+        const { data, error } = await client.rpc('version'); // supabase system rpc
         if(error){
-            document.getElementById('tableStatus').innerText = "Fehler beim Zugriff auf 'users' ❌: " + error.message;
-            document.getElementById('tableStatus').className = "status error";
+            statusDiv.innerText += "❌ Ping fehlgeschlagen: " + error.message;
         } else {
-            document.getElementById('tableStatus').innerText = "Tabelle 'users' erreichbar ✅: " + JSON.stringify(data[0] || {});
-            document.getElementById('tableStatus').className = "status success";
+            statusDiv.innerText += "✅ Ping erfolgreich: " + JSON.stringify(data);
         }
-    } catch(e) {
-        document.getElementById('tableStatus').innerText = "Exception beim Zugriff auf 'users' ❌: " + e.message;
-        document.getElementById('tableStatus').className = "status error";
+    } catch(e){
+        statusDiv.innerText += "❌ Exception: " + e.message;
     }
 });
 </script>
-
 </body>
 </html>
