@@ -83,9 +83,9 @@ input:focus { outline: none; border-color: #1a73e8; }
 
 <script>
 // ----------------- Supabase Initialisierung -----------------
-const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co'; // <-- ersetzen
+const SUPABASE_URL = 'https://jciwcfpykwpsgigjkwza.supabase.co; // <-- ersetzen
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ'; // <-- ersetzen
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ----------------- Variablen -----------------
 let currentUser = null;
@@ -109,7 +109,7 @@ document.getElementById("registerBtn").addEventListener("click", async ()=>{
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(password, salt);
 
-  const {data, error} = await supabase
+  const {data, error} = await supabaseClient
     .from('users')
     .insert([{username,password_hash:hash}]);
 
@@ -123,7 +123,7 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
   const password = document.getElementById("loginPassword").value.trim();
   if(!username||!password){ alert("Bitte beide Felder ausfüllen!"); return; }
 
-  const {data,error} = await supabase
+  const {data,error} = await supabaseClient
     .from('users')
     .select('*')
     .eq('username',username)
@@ -152,7 +152,7 @@ document.getElementById("logoutBtn").addEventListener("click", ()=>{
 
 // ----------------- Vokabeln laden -----------------
 async function loadVocab(){
-  const {data,error} = await supabase.from('vocab').select('*');
+  const {data,error} = await supabaseClient.from('vocab').select('*');
   if(error){ alert("Fehler beim Laden der Vokabeln."); return; }
   vocab = data;
   resetCounters();
@@ -162,7 +162,7 @@ async function loadVocab(){
 // ----------------- Fortschritt laden -----------------
 async function loadProgress(){
   if(!currentUser) return;
-  const {data,error} = await supabase
+  const {data,error} = await supabaseClient
     .from('progress')
     .select('*')
     .eq('user_id',currentUser.id);
@@ -191,7 +191,7 @@ async function loadProgress(){
 async function saveProgress(){
   if(!currentUser) return;
   for(let i=0;i<vocab.length;i++){
-    await supabase
+    await supabaseClient
       .from('progress')
       .upsert([{user_id:currentUser.id,vocab_id:vocab[i].id,correct_count:richtigZaehler[i],wrong_count:falschZaehler[i]}]);
   }
