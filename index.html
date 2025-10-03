@@ -38,7 +38,6 @@ th { cursor:pointer; }
 </nav>
 
 <main>
-<!-- Anmeldung -->
 <section id="authSection">
 <h1>Benutzerkonto</h1>
 <input id="username" placeholder="Benutzername">
@@ -48,7 +47,6 @@ th { cursor:pointer; }
 <pre id="authOutput"></pre>
 </section>
 
-<!-- Vokabeltrainer -->
 <section id="trainerSection" style="display:none;">
 <h1>Vokabeltrainer</h1>
 Richtung:
@@ -66,13 +64,11 @@ Wiederholungen:
 <div id="progressBarContainer"><div id="progressBar"></div></div>
 </section>
 
-<!-- Fortschritt -->
 <section id="progressSection" style="display:none;">
 <h1>Fortschritt</h1>
 <div id="progressContent">Lade Fortschritt...</div>
 </section>
 
-<!-- Account verwalten -->
 <section id="accountSection" style="display:none;">
 <h1>Account verwalten</h1>
 <input id="newUsername" placeholder="Neuer Benutzername">
@@ -81,7 +77,6 @@ Wiederholungen:
 <div id="accountContent"></div>
 </section>
 
-<!-- Vokabeln nach Chapter -->
 <section id="vocabSection" style="display:none;">
 <h1>Vokabeln nach Chapter</h1>
 <select id="chapterSelect"><option value="">Alle Chapters</option></select>
@@ -90,7 +85,6 @@ Wiederholungen:
 <tbody></tbody>
 </table>
 </section>
-</main>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
@@ -122,7 +116,7 @@ function showSection(id){
     document.getElementById(id).style.display="block";
 }
 
-// Registrierung
+// Registration
 document.getElementById("registerBtn").addEventListener("click", async ()=>{
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
@@ -146,7 +140,6 @@ document.getElementById("loginBtn").addEventListener("click", async ()=>{
     currentUser = data;
     document.getElementById("authOutput").innerText = "Login erfolgreich! Willkommen "+currentUser.username;
     document.getElementById("menu").style.display="flex";
-    showSection("trainerSection");
     await loadVocab();
     resetCounters();
     updateProgress();
@@ -175,13 +168,16 @@ async function loadVocab(){
     vocab = data;
 }
 
-// Fortschritt anzeigen
+// Fortschritt laden
 async function loadProgress(){
     if(!currentUser) return;
     const { data, error } = await supabase.from("progress").select("vocab_id,correct_count,wrong_count").eq("user_id",currentUser.id);
     const container = document.getElementById("progressContent");
     if(error){ container.innerText="Fehler beim Laden"; return; }
-    container.innerHTML = "<ul>"+data.map(d=>`<li>Vocab ID ${d.vocab_id}: ✅${d.correct_count} ❌${d.wrong_count}</li>`).join("")+"</ul>";
+    container.innerHTML = "<ul>"+data.map(d=>{
+        const v = vocab.find(v=>v.id===d.vocab_id);
+        return `<li>${v ? v.en+" → "+v.de : "Vokabel"}: ✅${d.correct_count} ❌${d.wrong_count}</li>`;
+    }).join("")+"</ul>";
 }
 
 // Account anzeigen
@@ -216,10 +212,44 @@ for(let i=1;i<=5;i++){ document.getElementById("repeatSelect").innerHTML+=`<opti
 function resetCounters(){ richtigZaehler={}; falschZaehler={}; vocab.forEach((v,i)=>{richtigZaehler[i]=0; falschZaehler[i]=0;}); totalCorrect=0; totalAnswers=0; }
 function pickRandomWord(){ let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); if(remaining.length===0)return null; if(lastWord!==null && remaining.length>1){ remaining = remaining.filter(i=>i!==lastWord); if(!remaining.length) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);} const idx = remaining[Math.floor(Math.random()*remaining.length)]; lastWord=idx; return idx;}
 function startQuiz(){ quizActive=true; document.getElementById("startBtn").disabled=true; document.getElementById("answer").disabled=false; document.getElementById("answer").focus(); direction=document.getElementById("directionSelect").value; repeatTarget=parseInt(document.getElementById("repeatSelect").value); resetCounters(); updateProgress(); nextQuestion();}
-function nextQuestion(){ currentWord=pickRandomWord(); if(currentWord===null){ endQuiz(); return;} document.getElementById("question").innerText=(direction==="en-de"?vocab[currentWord].en:vocab[currentWord].de); document.getElementById("answer").value=""; document.getElementById("answer").focus(); document.getElementById("feedback").innerText="";}
-function checkAnswer(){ totalAnswers++; let input=document.getElementById("answer").value.trim().toLowerCase(); let correct=(direction==="en-de"?vocab[currentWord].de.toLowerCase():vocab[currentWord].en.toLowerCase()); if(input===correct){ richtigZaehler[currentWord]++; totalCorrect++; document.getElementById("feedback").innerText="✅ Richtig!"; document.getElementById("feedback").style.color="green"; }else{ falschZaehler[currentWord]++; document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`; document.getElementById("feedback").style.color="red";} updateProgress(); setTimeout(nextQuestion,1000);}
+
+async function checkAnswer(){
+    totalAnswers++;
+    let input=document.getElementById("answer").value.trim().toLowerCase();
+    let correct=(direction==="en-de"?vocab[currentWord].de.toLowerCase():vocab[currentWord].en.toLowerCase());
+    if(input===correct){
+        richtigZaehler[currentWord]++;
+        totalCorrect++;
+        document.getElementById("feedback").innerText="✅ Richtig!";
+        document.getElementById("feedback").style.color="green";
+        await saveProgressToSupabase(currentWord,1,0);
+    }else{
+        falschZaehler[currentWord]++;
+        document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`;
+        document.getElementById("feedback").style.color="red";
+        await saveProgressToSupabase(currentWord,0,1);
+    }
+    updateProgress();
+    setTimeout(nextQuestion,1000);
+}
+
 function updateProgress(){ const totalTarget = repeatTarget*vocab.length; const progress = Math.min(100,(totalCorrect/totalTarget)*100); document.getElementById("progressBar").style.width=progress+"%";}
+function nextQuestion(){ currentWord=pickRandomWord(); if(currentWord===null){ endQuiz(); return;} document.getElementById("question").innerText=(direction==="en-de"?vocab[currentWord].en:vocab[currentWord].de); document.getElementById("answer").value=""; document.getElementById("answer").focus(); document.getElementById("feedback").innerText="";}
 function endQuiz(){ quizActive=false; document.getElementById("startBtn").disabled=false; document.getElementById("answer").disabled=true; document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉";}
+
+async function saveProgressToSupabase(vocabIndex, correct, wrong){
+    if(!currentUser) return;
+    const vocabId = vocab[vocabIndex].id;
+    const { data: existing } = await supabase.from("progress").select("*").eq("user_id",currentUser.id).eq("vocab_id",vocabId).single();
+    if(existing){
+        await supabase.from("progress").update({
+            correct_count: existing.correct_count + correct,
+            wrong_count: existing.wrong_count + wrong
+        }).eq("id",existing.id);
+    }else{
+        await supabase.from("progress").insert([{user_id:currentUser.id,vocab_id:vocabId,correct_count:correct,wrong_count:wrong}]);
+    }
+}
 </script>
 </body>
 </html>
