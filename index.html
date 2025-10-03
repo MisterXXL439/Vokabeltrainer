@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Supabase User Test</title>
+  <title>Supabase User Login Test</title>
 </head>
 <body>
-  <h1>Supabase Benutzerverwaltung</h1>
+  <h1>Supabase User Testseite</h1>
 
   <h2>Registrieren</h2>
   <input id="regUsername" placeholder="Benutzername">
@@ -17,6 +17,7 @@
   <input id="loginPassword" type="password" placeholder="Passwort">
   <button id="loginBtn">Login</button>
 
+  <h2>Ausgabe</h2>
   <pre id="output">Noch nichts passiert…</pre>
 
 <script type="module">
@@ -38,7 +39,7 @@
 
   // Registrieren
   document.getElementById("registerBtn").addEventListener("click", async () => {
-    const username = document.getElementById("regUsername").value;
+    const username = document.getElementById("regUsername").value.trim();
     const password = document.getElementById("regPassword").value;
 
     if (!username || !password) {
@@ -50,19 +51,20 @@
 
     const { data, error } = await supabase
       .from("users")
-      .insert([{ username, password_hash: passwordHash, is_active: false }]);
+      .insert([{ username, password_hash: passwordHash, is_active: false }])
+      .select();
 
     if (error) {
       output.innerText = "❌ Fehler beim Registrieren: " + error.message;
     } else {
-      output.innerText = "✅ Benutzer registriert (noch inaktiv, Admin muss freischalten):\n"
+      output.innerText = "✅ Benutzer registriert (noch inaktiv):\n"
         + JSON.stringify(data, null, 2);
     }
   });
 
   // Login
   document.getElementById("loginBtn").addEventListener("click", async () => {
-    const username = document.getElementById("loginUsername").value;
+    const username = document.getElementById("loginUsername").value.trim();
     const password = document.getElementById("loginPassword").value;
 
     if (!username || !password) {
@@ -72,18 +74,22 @@
 
     const passwordHash = await hashPassword(password);
 
+    // Debug: zeigen, was wir suchen
+    output.innerText = `🔎 Suche nach Benutzer:\nusername=${username}\npassword_hash=${passwordHash}\n`;
+
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("username", username)
       .eq("password_hash", passwordHash)
-      .eq("is_active", true)
-      .single();
+      .eq("is_active", true);
 
-    if (error || !data) {
-      output.innerText = "❌ Login fehlgeschlagen: Benutzer nicht gefunden oder noch nicht aktiviert.";
+    if (error) {
+      output.innerText += "❌ Fehler: " + error.message;
+    } else if (!data || data.length === 0) {
+      output.innerText += "❌ Kein aktiver Benutzer mit diesen Daten gefunden.";
     } else {
-      output.innerText = "✅ Login erfolgreich:\n" + JSON.stringify(data, null, 2);
+      output.innerText += "✅ Login erfolgreich!\n" + JSON.stringify(data, null, 2);
     }
   });
 </script>
