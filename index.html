@@ -1,255 +1,241 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vokabeltrainer</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-body { margin:0; font-family:Arial,sans-serif; background:#f0f4f8; display:flex; height:100vh; }
-nav { width:250px; background:#1a73e8; color:white; display:flex; flex-direction:column; padding:20px; display:none; }
-nav h2 { margin-top:0; margin-bottom:20px; font-size:1.5em; }
-nav a { color:white; text-decoration:none; margin:10px 0; font-size:1.1em; display:flex; align-items:center; }
-nav a i { margin-right:10px; }
-nav a:hover { color:#ffeb3b; }
-main { flex:1; padding:30px; overflow-y:auto; }
-h1 { color:#333; }
-section { background:white; padding:20px; margin-bottom:20px; border-radius:12px; box-shadow:0 4px 8px rgba(0,0,0,0.1); }
-input,select,button { font-size:1em; padding:8px 12px; margin:5px 0; border-radius:8px; border:1px solid #ccc; }
-button { background:#1a73e8; color:white; border:none; cursor:pointer; }
-button:hover { background:#1665c1; }
-#progressBarContainer { width:100%; height:25px; background:#ddd; border-radius:15px; overflow:hidden; margin-top:15px; }
-#progressBar { height:100%; background:#34a853; width:0%; transition:width 0.3s; }
-#question { font-size:1.5em; color:#1a73e8; margin:20px 0; }
-#feedback { font-size:1.2em; min-height:24px; }
-table { width:100%; border-collapse:collapse; }
-th,td { padding:8px 12px; border-bottom:1px solid #ccc; text-align:left; }
-th { cursor:pointer; }
-</style>
+  <meta charset="UTF-8">
+  <title>Vokabeltrainer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial; margin:0; display:flex; height:100vh; }
+    nav { width:200px; background:#333; color:#fff; padding:10px; }
+    nav h3 { color:#ffcc00; }
+    nav button { display:block; margin:5px 0; width:100%; cursor:pointer; }
+    main { flex:1; padding:20px; }
+    #menu { display:none; }
+    .hidden { display:none; }
+    .vocabItem { padding:3px; cursor:pointer; display:inline-block; margin:3px; }
+    .selected { background:#d0ffd0; }
+  </style>
 </head>
 <body>
+  <nav>
+    <h3>Menü</h3>
+    <div id="menu">
+      <button onclick="showSection('trainer')">Trainer</button>
+      <button onclick="showSection('progress')">Fortschritt</button>
+      <button onclick="showSection('account')">Account</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </nav>
+  <main>
+    <!-- Anmeldung -->
+    <section id="loginSection">
+      <h2>Anmelden</h2>
+      <input id="loginUser" placeholder="Benutzername"><br>
+      <input id="loginPass" type="password" placeholder="Passwort"><br>
+      <button onclick="login()">Login</button>
+      <h3>Registrieren</h3>
+      <input id="regUser" placeholder="Benutzername"><br>
+      <input id="regPass" type="password" placeholder="Passwort"><br>
+      <button onclick="register()">Registrieren</button>
+    </section>
 
-<nav id="menu">
-<h2><i class="fa-solid fa-book"></i> Menü</h2>
-<a href="#" id="navTrainer"><i class="fa-solid fa-chalkboard"></i> Vokabeltrainer</a>
-<a href="#" id="navProgress"><i class="fa-solid fa-chart-line"></i> Fortschritt</a>
-<a href="#" id="navAccount"><i class="fa-solid fa-user"></i> Account verwalten</a>
-<a href="#" id="navVocab"><i class="fa-solid fa-list"></i> Vokabeln nach Chapter</a>
-</nav>
+    <!-- Trainer -->
+    <section id="trainerSection" class="hidden">
+      <h2>Vokabeltrainer</h2>
+      <p>Wähle Vokabeln (einzeln oder ganze Pages/Chapters):</p>
+      <div id="selection"></div>
+      <button onclick="startTraining()">Training starten</button>
+      <div id="quiz" class="hidden">
+        <h3 id="question"></h3>
+        <input id="answer" placeholder="Antwort eingeben">
+        <button onclick="checkAnswer()">OK</button>
+        <p id="feedback"></p>
+      </div>
+    </section>
 
-<main>
-<section id="authSection">
-<h1>Benutzerkonto</h1>
-<input id="username" placeholder="Benutzername">
-<input id="password" type="password" placeholder="Passwort"><br>
-<button id="registerBtn">Registrieren</button>
-<button id="loginBtn">Login</button>
-<pre id="authOutput"></pre>
-</section>
+    <!-- Fortschritt -->
+    <section id="progressSection" class="hidden">
+      <h2>Fortschritt</h2>
+      <div id="progressView"></div>
+    </section>
 
-<section id="trainerSection" style="display:none;">
-<h1>Vokabeltrainer</h1>
-Richtung:
-<select id="directionSelect">
-<option value="en-de">Englisch → Deutsch</option>
-<option value="de-en">Deutsch → Englisch</option>
-</select>
-Wiederholungen:
-<select id="repeatSelect"></select>
-<button id="startBtn">Start</button>
+    <!-- Account -->
+    <section id="accountSection" class="hidden">
+      <h2>Account verwalten</h2>
+      <input id="newUsername" placeholder="Neuer Benutzername"><br>
+      <input id="newPassword" type="password" placeholder="Neues Passwort"><br>
+      <button onclick="updateAccount()">Speichern</button>
+      <p id="accountMsg"></p>
+    </section>
+  </main>
 
-<div id="question"></div>
-<input type="text" id="answer" placeholder="Antwort" disabled>
-<div id="feedback"></div>
-<div id="progressBarContainer"><div id="progressBar"></div></div>
-</section>
+<script>
+  // ✅ Supabase-Initialisierung
+  const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co"; // <--- deine echte URL
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";                  // <--- dein echter Anon-Key
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<section id="progressSection" style="display:none;">
-<h1>Fortschritt</h1>
-<div id="progressContent">Lade Fortschritt...</div>
-</section>
+  let currentUser=null;
+  let vocab=[];
+  let progress={};
+  let selectedVocabs=new Set();
+  let currentWord=null;
 
-<section id="accountSection" style="display:none;">
-<h1>Account verwalten</h1>
-<input id="newUsername" placeholder="Neuer Benutzername">
-<input id="newPassword" type="password" placeholder="Neues Passwort">
-<button id="updateAccountBtn">Speichern</button>
-<div id="accountContent"></div>
-</section>
+  function showSection(s){
+    document.querySelectorAll("main section").forEach(sec=>sec.classList.add("hidden"));
+    if(s==="trainer") document.getElementById("trainerSection").classList.remove("hidden");
+    if(s==="progress"){ document.getElementById("progressSection").classList.remove("hidden"); showProgress(); }
+    if(s==="account"){ document.getElementById("accountSection").classList.remove("hidden"); }
+  }
 
-<section id="vocabSection" style="display:none;">
-<h1>Vokabeln nach Chapter</h1>
-<select id="chapterSelect"><option value="">Alle Chapters</option></select>
-<table id="vocabTable">
-<thead><tr><th>Englisch</th><th>Deutsch</th><th>Chapter</th></tr></thead>
-<tbody></tbody>
-</table>
-</section>
+  async function register(){
+    const u=document.getElementById("regUser").value;
+    const p=document.getElementById("regPass").value;
+    const { error } = await supabase.from("users").insert([{username:u,password_hash:p,is_active:false}]);
+    alert(error?"Fehler: "+error.message:"Registriert. Admin muss freischalten.");
+  }
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-const SUPABASE_URL = "https://jciwcfpykwpsgigjkwza.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjaXdjZnB5a3dwc2dpZ2prd3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTQzNDgsImV4cCI6MjA3NDk3MDM0OH0.djMNYfRGZvqiydLVTO41-aADH9dhj2zjkCWzbGaMEcQ";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let currentUser = null;
-let vocab = [];
-let richtigZaehler = {};
-let falschZaehler = {};
-let repeatTarget = 3;
-let currentWord = null;
-let lastWord = null;
-let totalCorrect = 0;
-let totalAnswers = 0;
-let direction = "en-de";
-let quizActive = false;
-
-// Navigation
-document.getElementById("navTrainer").addEventListener("click", ()=>showSection("trainerSection"));
-document.getElementById("navProgress").addEventListener("click", ()=>{showSection("progressSection"); loadProgress();});
-document.getElementById("navAccount").addEventListener("click", ()=>{showSection("accountSection"); loadAccount();});
-document.getElementById("navVocab").addEventListener("click", ()=>{showSection("vocabSection"); loadVocabTable();});
-
-function showSection(id){
-    ["authSection","trainerSection","progressSection","accountSection","vocabSection"].forEach(s=>document.getElementById(s).style.display="none");
-    document.getElementById(id).style.display="block";
-}
-
-// Registration
-document.getElementById("registerBtn").addEventListener("click", async ()=>{
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzername und Passwort eingeben"; return;}
-    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    const { data, error } = await supabase.from("users").insert([{username,password_hash,is_active:false}]).select();
-    document.getElementById("authOutput").innerText = error? "Fehler: "+error.message : "Benutzer registriert, Admin muss freischalten";
-});
-
-// Login
-document.getElementById("loginBtn").addEventListener("click", async ()=>{
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-    if(!username||!password){ document.getElementById("authOutput").innerText="Bitte Benutzername und Passwort eingeben"; return;}
-    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-    const password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  async function login(){
+    const u=document.getElementById("loginUser").value;
+    const p=document.getElementById("loginPass").value;
     const { data, error } = await supabase.from("users").select("*")
-        .eq("username",username).eq("password_hash",password_hash).eq("is_active",true).single();
-    if(error){ document.getElementById("authOutput").innerText="Login fehlgeschlagen: "+error.message; return;}
-    currentUser = data;
-    document.getElementById("authOutput").innerText = "Login erfolgreich! Willkommen "+currentUser.username;
-    document.getElementById("menu").style.display="flex";
+      .eq("username",u).eq("password_hash",p).eq("is_active",true).single();
+    if(error||!data){ alert("Login fehlgeschlagen"); return; }
+    currentUser=data;
+    document.getElementById("loginSection").classList.add("hidden");
+    document.getElementById("menu").style.display="block";
+    showSection("trainer");
     await loadVocab();
-    resetCounters();
-    updateProgress();
-});
+    await loadProgress();
+    renderSelection();
+  }
 
-// Account ändern
-document.getElementById("updateAccountBtn").addEventListener("click", async ()=>{
-    if(!currentUser) return;
-    const newUsername = document.getElementById("newUsername").value.trim() || currentUser.username;
-    const newPassword = document.getElementById("newPassword").value;
-    let updates = {username:newUsername};
-    if(newPassword){
-        const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(newPassword));
-        updates.password_hash = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
-    const { data, error } = await supabase.from("users").update(updates).eq("id",currentUser.id).select();
-    if(error){ document.getElementById("accountContent").innerText="Fehler: "+error.message; return; }
-    currentUser = data[0];
-    document.getElementById("accountContent").innerText="Daten erfolgreich aktualisiert!";
-});
+  function logout(){ location.reload(); }
 
-// Vokabeln laden
-async function loadVocab(){
-    const { data, error } = await supabase.from("vocab").select("*").order('chapter',{ascending:true});
-    if(error){ console.error(error); return; }
-    vocab = data;
-}
+  async function loadVocab(){
+    const { data } = await supabase.from("vocab").select("*");
+    vocab=data||[];
+  }
 
-// Fortschritt laden
-async function loadProgress(){
-    if(!currentUser) return;
-    const { data, error } = await supabase.from("progress").select("vocab_id,correct_count,wrong_count").eq("user_id",currentUser.id);
-    const container = document.getElementById("progressContent");
-    if(error){ container.innerText="Fehler beim Laden"; return; }
-    container.innerHTML = "<ul>"+data.map(d=>{
-        const v = vocab.find(v=>v.id===d.vocab_id);
-        return `<li>${v ? v.en+" → "+v.de : "Vokabel"}: ✅${d.correct_count} ❌${d.wrong_count}</li>`;
-    }).join("")+"</ul>";
-}
+  async function loadProgress(){
+    const { data } = await supabase.from("progress").select("*").eq("user_id", currentUser.id);
+    progress={};
+    (data||[]).forEach(r=>{progress[r.vocab_id]={stage:r.stage,wrong_count:r.wrong_count}});
+  }
 
-// Account anzeigen
-function loadAccount(){
-    if(!currentUser) return;
-    document.getElementById("newUsername").value = currentUser.username;
-    document.getElementById("newPassword").value = "";
-    document.getElementById("accountContent").innerText = "";
-}
+  function renderSelection(){
+    const div=document.getElementById("selection");
+    div.innerHTML="";
+    const chapters=[...new Set(vocab.map(v=>v.chapter))];
+    chapters.forEach(ch=>{
+      const chDiv=document.createElement("div");
+      chDiv.innerHTML=`<b>Chapter ${ch}</b> <button onclick="selectChapter(${ch})">Alle auswählen</button>`;
+      div.appendChild(chDiv);
+      const pages=[...new Set(vocab.filter(v=>v.chapter===ch).map(v=>v.page))];
+      pages.forEach(pg=>{
+        const pgDiv=document.createElement("div");
+        pgDiv.style.marginLeft="15px";
+        pgDiv.innerHTML=`Page ${pg} <button onclick="selectPage(${ch},${pg})">Alle auswählen</button>`;
+        div.appendChild(pgDiv);
+        vocab.filter(v=>v.chapter===ch&&v.page===pg).forEach(v=>{
+          const span=document.createElement("span");
+          span.className="vocabItem";
+          span.textContent=` ${v.en} - ${v.de}`;
+          span.onclick=()=>toggleVocab(v.id,span);
+          if(selectedVocabs.has(v.id)) span.classList.add("selected");
+          pgDiv.appendChild(span);
+        });
+      });
+    });
+  }
 
-// Vokabel-Tabelle nach Chapter
-function loadVocabTable(){
-    const tbody = document.querySelector("#vocabTable tbody");
-    tbody.innerHTML="";
-    const chapterSelect = document.getElementById("chapterSelect");
-    const chapters = [...new Set(vocab.map(v=>v.chapter).sort((a,b)=>a-b))];
-    chapterSelect.innerHTML=`<option value="">Alle Chapters</option>`+chapters.map(c=>`<option value="${c}">${c}</option>`).join("");
-    chapterSelect.onchange = ()=>{
-        const selected = chapterSelect.value;
-        const filtered = selected? vocab.filter(v=>v.chapter==selected) : vocab;
-        tbody.innerHTML = filtered.map(v=>`<tr><td>${v.en}</td><td>${v.de}</td><td>${v.chapter}</td></tr>`).join("");
-    };
-    chapterSelect.dispatchEvent(new Event("change"));
-}
+  function toggleVocab(id,el){
+    if(selectedVocabs.has(id)){ selectedVocabs.delete(id); el.classList.remove("selected"); }
+    else{ selectedVocabs.add(id); el.classList.add("selected"); }
+  }
 
-// --- Vokabeltrainer Logik ---
-document.getElementById("startBtn").addEventListener("click", startQuiz);
-document.getElementById("answer").addEventListener("keydown", e=>{if(e.key==="Enter") checkAnswer();});
+  function selectChapter(ch){
+    vocab.filter(v=>v.chapter===ch).forEach(v=>selectedVocabs.add(v.id));
+    renderSelection();
+  }
+  function selectPage(ch,pg){
+    vocab.filter(v=>v.chapter===ch&&v.page===pg).forEach(v=>selectedVocabs.add(v.id));
+    renderSelection();
+  }
 
-for(let i=1;i<=5;i++){ document.getElementById("repeatSelect").innerHTML+=`<option value="${i}" ${i===3?'selected':''}>${i}</option>`; }
+  function startTraining(){
+    if(selectedVocabs.size===0){ alert("Bitte Vokabeln wählen"); return; }
+    document.getElementById("quiz").classList.remove("hidden");
+    nextQuestion();
+  }
 
-function resetCounters(){ richtigZaehler={}; falschZaehler={}; vocab.forEach((v,i)=>{richtigZaehler[i]=0; falschZaehler[i]=0;}); totalCorrect=0; totalAnswers=0; }
-function pickRandomWord(){ let remaining = vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget); if(remaining.length===0)return null; if(lastWord!==null && remaining.length>1){ remaining = remaining.filter(i=>i!==lastWord); if(!remaining.length) remaining=vocab.map((_,i)=>i).filter(i=>richtigZaehler[i]<repeatTarget);} const idx = remaining[Math.floor(Math.random()*remaining.length)]; lastWord=idx; return idx;}
-function startQuiz(){ quizActive=true; document.getElementById("startBtn").disabled=true; document.getElementById("answer").disabled=false; document.getElementById("answer").focus(); direction=document.getElementById("directionSelect").value; repeatTarget=parseInt(document.getElementById("repeatSelect").value); resetCounters(); updateProgress(); nextQuestion();}
+  function nextQuestion(){
+    const ids=[...selectedVocabs];
+    currentWord=vocab.find(v=>v.id===ids[Math.floor(Math.random()*ids.length)]);
+    document.getElementById("question").innerText=currentWord.en;
+    document.getElementById("answer").value="";
+    document.getElementById("feedback").innerText="";
+  }
 
-async function checkAnswer(){
-    totalAnswers++;
-    let input=document.getElementById("answer").value.trim().toLowerCase();
-    let correct=(direction==="en-de"?vocab[currentWord].de.toLowerCase():vocab[currentWord].en.toLowerCase());
-    if(input===correct){
-        richtigZaehler[currentWord]++;
-        totalCorrect++;
-        document.getElementById("feedback").innerText="✅ Richtig!";
-        document.getElementById("feedback").style.color="green";
-        await saveProgressToSupabase(currentWord,1,0);
+  async function checkAnswer(){
+    const input=document.getElementById("answer").value.trim().toLowerCase();
+    if(input===currentWord.de.toLowerCase()){
+      let newStage=(progress[currentWord.id]?.stage||0)+1;
+      let wrong=progress[currentWord.id]?.wrong_count||0;
+      progress[currentWord.id]={stage:newStage,wrong_count:wrong};
+      await supabase.from("progress").upsert([{user_id:currentUser.id,vocab_id:currentWord.id,stage:newStage,wrong_count:wrong}]);
+      document.getElementById("feedback").innerText="✅ Richtig!";
     }else{
-        falschZaehler[currentWord]++;
-        document.getElementById("feedback").innerText=`❌ Falsch! Richtige Antwort: ${correct}`;
-        document.getElementById("feedback").style.color="red";
-        await saveProgressToSupabase(currentWord,0,1);
+      let st=progress[currentWord.id]?.stage||0;
+      let wrong=(progress[currentWord.id]?.wrong_count||0)+1;
+      progress[currentWord.id]={stage:st,wrong_count:wrong};
+      await supabase.from("progress").upsert([{user_id:currentUser.id,vocab_id:currentWord.id,stage:st,wrong_count:wrong}]);
+      document.getElementById("feedback").innerText=`❌ Falsch! (${currentWord.de})`;
     }
-    updateProgress();
     setTimeout(nextQuestion,1000);
-}
+  }
 
-function updateProgress(){ const totalTarget = repeatTarget*vocab.length; const progress = Math.min(100,(totalCorrect/totalTarget)*100); document.getElementById("progressBar").style.width=progress+"%";}
-function nextQuestion(){ currentWord=pickRandomWord(); if(currentWord===null){ endQuiz(); return;} document.getElementById("question").innerText=(direction==="en-de"?vocab[currentWord].en:vocab[currentWord].de); document.getElementById("answer").value=""; document.getElementById("answer").focus(); document.getElementById("feedback").innerText="";}
-function endQuiz(){ quizActive=false; document.getElementById("startBtn").disabled=false; document.getElementById("answer").disabled=true; document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉";}
+  function showProgress(){
+    const c=document.getElementById("progressView");
+    c.innerHTML="";
+    const chapters=[...new Set(vocab.map(v=>v.chapter))];
+    chapters.forEach(ch=>{
+      const inCh=vocab.filter(v=>v.chapter===ch);
+      const minStage=Math.min(...inCh.map(v=>progress[v.id]?.stage||0));
+      const d=document.createElement("div");
+      d.innerHTML=`<b>Chapter ${ch}</b> – Stufe ${minStage}`;
+      d.onclick=()=>showPages(ch);
+      c.appendChild(d);
+    });
+  }
+  function showPages(ch){
+    const c=document.getElementById("progressView"); c.innerHTML="";
+    const pages=[...new Set(vocab.filter(v=>v.chapter===ch).map(v=>v.page))];
+    pages.forEach(pg=>{
+      const inPg=vocab.filter(v=>v.chapter===ch&&v.page===pg);
+      const minStage=Math.min(...inPg.map(v=>progress[v.id]?.stage||0));
+      const d=document.createElement("div");
+      d.innerHTML=`Page ${pg} – Stufe ${minStage}`;
+      d.onclick=()=>showVocabs(ch,pg);
+      c.appendChild(d);
+    });
+  }
+  function showVocabs(ch,pg){
+    const c=document.getElementById("progressView"); c.innerHTML="";
+    vocab.filter(v=>v.chapter===ch&&v.page===pg).forEach(v=>{
+      const st=progress[v.id]?.stage||0;
+      const d=document.createElement("div");
+      d.innerText=`${v.en} – ${v.de} (Stufe ${st})`;
+      c.appendChild(d);
+    });
+  }
 
-async function saveProgressToSupabase(vocabIndex, correct, wrong){
-    if(!currentUser) return;
-    const vocabId = vocab[vocabIndex].id;
-    const { data: existing } = await supabase.from("progress").select("*").eq("user_id",currentUser.id).eq("vocab_id",vocabId).single();
-    if(existing){
-        await supabase.from("progress").update({
-            correct_count: existing.correct_count + correct,
-            wrong_count: existing.wrong_count + wrong
-        }).eq("id",existing.id);
-    }else{
-        await supabase.from("progress").insert([{user_id:currentUser.id,vocab_id:vocabId,correct_count:correct,wrong_count:wrong}]);
-    }
-}
+  async function updateAccount(){
+    const u=document.getElementById("newUsername").value;
+    const p=document.getElementById("newPassword").value;
+    const { error } = await supabase.from("users").update({username:u,password_hash:p}).eq("id",currentUser.id);
+    document.getElementById("accountMsg").innerText=error?"Fehler":"Gespeichert!";
+  }
 </script>
 </body>
 </html>
