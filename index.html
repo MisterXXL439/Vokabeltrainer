@@ -22,10 +22,12 @@ button:hover { background:#1665c1; }
 #progressBar { height:100%; background:#34a853; width:0%; transition:width 0.3s; }
 #question { font-size:1.5em; color:#1a73e8; margin:20px 0; }
 #feedback { font-size:1.2em; min-height:24px; }
-table { width:100%; border-collapse:collapse; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
 th,td { padding:8px 12px; border-bottom:1px solid #ccc; text-align:left; }
 th { cursor:pointer; }
 .vocab-checkbox { margin-right:8px; }
+button.small { font-size:0.9em; padding:5px 8px; margin-left:5px; background:#555; }
+button.small:hover { background:#333; }
 </style>
 </head>
 <body>
@@ -35,7 +37,7 @@ th { cursor:pointer; }
 <a href="#" id="navTrainer"><i class="fa-solid fa-chalkboard"></i> Vokabeltrainer</a>
 <a href="#" id="navProgress"><i class="fa-solid fa-chart-line"></i> Fortschritt</a>
 <a href="#" id="navAccount"><i class="fa-solid fa-user"></i> Account verwalten</a>
-<a href="#" id="navVocab"><i class="fa-solid fa-list"></i> Vokabeln nach Chapter</a>
+<a href="#" id="navVocab"><i class="fa-solid fa-list"></i> Vokabeln auswählen</a>
 </nav>
 
 <main>
@@ -79,10 +81,19 @@ Wiederholungen:
 </section>
 
 <section id="vocabSection" style="display:none;">
-<h1>Vokabeln nach Chapter/Page</h1>
+<h1>Vokabeln auswählen</h1>
+<div>
+<label>Chapter:</label>
 <select id="chapterSelect"><option value="">Alle Chapters</option></select>
+<label>Page:</label>
 <select id="pageSelect"><option value="">Alle Pages</option></select>
-<div id="vocabList"></div>
+<button id="selectAllBtn" class="small">Alles auswählen</button>
+<button id="deselectAllBtn" class="small">Alles abwählen</button>
+</div>
+<table id="vocabTable">
+<thead><tr><th>Auswählen</th><th>Englisch</th><th>Deutsch</th><th>Chapter</th><th>Page</th></tr></thead>
+<tbody></tbody>
+</table>
 </section>
 
 <script type="module">
@@ -98,7 +109,7 @@ let currentUser=null, vocab=[], selectedVocabIds=[], richtigZaehler={}, falschZa
 document.getElementById("navTrainer").addEventListener("click", ()=>showSection("trainerSection"));
 document.getElementById("navProgress").addEventListener("click", ()=>{showSection("progressSection"); loadProgress();});
 document.getElementById("navAccount").addEventListener("click", ()=>{showSection("accountSection"); loadAccount();});
-document.getElementById("navVocab").addEventListener("click", ()=>{showSection("vocabSection"); loadVocabSelection();});
+document.getElementById("navVocab").addEventListener("click", ()=>{showSection("vocabSection"); loadVocabTable();});
 
 function showSection(id){
   ["authSection","trainerSection","progressSection","accountSection","vocabSection"].forEach(s=>document.getElementById(s).style.display="none");
@@ -141,66 +152,62 @@ document.getElementById("updateAccountBtn").addEventListener("click", async ()=>
     updates.password_hash=Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }
   const { data, error } = await supabase.from("users").update(updates).eq("id",currentUser.id).select();
-  if(error){ document.getElementById("accountContent").innerText="Fehler: "+error.message; return; }
+  if(error){ alert("Fehler: "+error.message); return; }
   currentUser=data[0];
-  document.getElementById("accountContent").innerText="Daten erfolgreich aktualisiert!";
+  alert("Daten erfolgreich aktualisiert!");
 });
 
 function loadAccount(){
   if(!currentUser) return;
   document.getElementById("newUsername").value=currentUser.username;
   document.getElementById("newPassword").value="";
-  document.getElementById("accountContent").innerText="";
 }
 
-// --- Vokabeln & Auswahl ---
+// --- Vokabeln laden ---
 async function loadVocab(){
-  const { data, error } = await supabase.from("vocab").select("*").order('chapter',{ascending:true});
+  const { data, error } = await supabase.from("vocab").select("*").order('chapter',{ascending:true}).order('page',{ascending:true});
   if(error){ console.error(error); return; }
   vocab=data;
 }
 
-function loadVocabSelection(){
-  if(!vocab.length) return;
+// --- Vokabeln Tabelle ---
+function loadVocabTable(){
+  const tbody=document.querySelector("#vocabTable tbody");
+  tbody.innerHTML="";
   const chapterSelect=document.getElementById("chapterSelect");
   const pageSelect=document.getElementById("pageSelect");
-  const vocabList=document.getElementById("vocabList");
 
   const chapters=[...new Set(vocab.map(v=>v.chapter).sort((a,b)=>a-b))];
   chapterSelect.innerHTML=`<option value="">Alle Chapters</option>`+chapters.map(c=>`<option value="${c}">${c}</option>`).join("");
+  chapterSelect.onchange=()=>updateVocabTable();
+  pageSelect.onchange=()=>updateVocabTable();
 
-  chapterSelect.onchange=()=>{
-    const chap=chapterSelect.value;
-    const pages=[...new Set(vocab.filter(v=>!chap||v.chapter==chap).map(v=>v.page).sort((a,b)=>a-b))];
-    pageSelect.innerHTML=`<option value="">Alle Pages</option>`+pages.map(p=>`<option value="${p}">${p}</option>`).join("");
-    renderVocabList(chap,pageSelect.value);
-  };
+  document.getElementById("selectAllBtn").onclick=()=>{document.querySelectorAll("#vocabTable tbody input[type=checkbox]").forEach(cb=>{cb.checked=true; selectedVocabIds=Array.from(document.querySelectorAll("#vocabTable tbody input[type=checkbox]")).map(c=>parseInt(c.value));});};
+  document.getElementById("deselectAllBtn").onclick=()=>{document.querySelectorAll("#vocabTable tbody input[type=checkbox]").forEach(cb=>cb.checked=false); selectedVocabIds=[];};
 
-  pageSelect.onchange=()=>{
-    renderVocabList(chapterSelect.value,pageSelect.value);
-  };
-
-  renderVocabList(chapterSelect.value,pageSelect.value);
+  updateVocabTable();
 }
 
-function renderVocabList(chapter,page){
-  const list=vocab.filter(v=>(!chapter||v.chapter==chapter)&&(!page||v.page==page));
-  const container=document.getElementById("vocabList");
-  container.innerHTML="";
+function updateVocabTable(){
+  const tbody=document.querySelector("#vocabTable tbody");
+  const chap=document.getElementById("chapterSelect").value;
+  const page=document.getElementById("pageSelect").value;
+  const filtered=vocab.filter(v=>(!chap||v.chapter==chap)&&(!page||v.page==page));
+  const pages=[...new Set(filtered.map(v=>v.page).sort((a,b)=>a-b))];
+  document.getElementById("pageSelect").innerHTML=`<option value="">Alle Pages</option>`+pages.map(p=>`<option value="${p}">${p}</option>`).join("");
+
+  tbody.innerHTML="";
   selectedVocabIds=[];
-  list.forEach(v=>{
-    const div=document.createElement("div");
-    const checkbox=document.createElement("input");
-    checkbox.type="checkbox";
-    checkbox.className="vocab-checkbox";
-    checkbox.value=v.id;
-    checkbox.onchange=(e)=>{ 
-      if(e.target.checked) selectedVocabIds.push(v.id);
-      else selectedVocabIds=selectedVocabIds.filter(id=>id!==v.id);
+  filtered.forEach(v=>{
+    const row=document.createElement("tr");
+    row.innerHTML=`<td><input type="checkbox" class="vocab-checkbox" value="${v.id}"></td>
+                     <td>${v.en}</td><td>${v.de}</td><td>${v.chapter}</td><td>${v.page}</td>`;
+    tbody.appendChild(row);
+    row.querySelector("input").onchange=e=>{
+      const id=parseInt(e.target.value);
+      if(e.target.checked) selectedVocabIds.push(id);
+      else selectedVocabIds=selectedVocabIds.filter(i=>i!==id);
     };
-    div.appendChild(checkbox);
-    div.appendChild(document.createTextNode(`${v.en} → ${v.de} (Chapter ${v.chapter}, Page ${v.page})`));
-    container.appendChild(div);
   });
 }
 
@@ -209,15 +216,15 @@ document.getElementById("startBtn").addEventListener("click", startQuiz);
 document.getElementById("answer").addEventListener("keydown", e=>{if(e.key==="Enter") checkAnswer();});
 for(let i=1;i<=5;i++){ document.getElementById("repeatSelect").innerHTML+=`<option value="${i}" ${i===3?'selected':''}>${i}</option>`; }
 
-function resetCounters(){ 
+function resetCounters(){
   richtigZaehler={}; falschZaehler={};
-  const trainSet=selectedVocabIds.length>0?vocab.filter(v=>selectedVocabIds.includes(v.id)):vocab;
+  const trainSet=vocab.filter(v=>selectedVocabIds.includes(v.id));
   trainSet.forEach(v=>{richtigZaehler[v.id]=0; falschZaehler[v.id]=0;});
   totalCorrect=0; totalAnswers=0;
 }
 
 function pickRandomWord(){
-  const trainSet=selectedVocabIds.length>0?vocab.filter(v=>selectedVocabIds.includes(v.id)):vocab;
+  const trainSet=vocab.filter(v=>selectedVocabIds.includes(v.id));
   let remaining=trainSet.map(v=>v.id).filter(id=>richtigZaehler[id]<repeatTarget);
   if(remaining.length===0) return null;
   if(remaining.length>1 && currentWord!==null) remaining=remaining.filter(i=>i!==currentWord);
@@ -266,8 +273,8 @@ function nextQuestion(){
   document.getElementById("feedback").innerText="";
 }
 
-function updateProgress(){ 
-  const totalTarget=selectedVocabIds.length>0?selectedVocabIds.length*repeatTarget:vocab.length*repeatTarget;
+function updateProgress(){
+  const totalTarget=selectedVocabIds.length*repeatTarget;
   const progress=Math.min(100,(totalCorrect/totalTarget)*100);
   document.getElementById("progressBar").style.width=progress+"%";
 }
@@ -277,6 +284,18 @@ function endQuiz(){
   document.getElementById("startBtn").disabled=false;
   document.getElementById("answer").disabled=true;
   document.getElementById("question").innerText="🎉 Alle Vokabeln geschafft! 🎉";
+}
+
+// --- Fortschritt ---
+async function loadProgress(){
+  if(!currentUser) return;
+  const { data, error } = await supabase.from("progress").select("*").eq("user_id",currentUser.id);
+  const container=document.getElementById("progressContent");
+  if(error){ container.innerText="Fehler beim Laden"; return; }
+  container.innerHTML="<ul>"+data.map(d=>{
+    const v=vocab.find(vv=>vv.id===d.vocab_id);
+    return `<li>${v?`${v.en} → ${v.de} (Chapter ${v.chapter}, Page ${v.page})`:d.vocab_id}: ✅${d.correct_count} ❌${d.wrong_count}</li>`;
+  }).join("")+"</ul>";
 }
 
 async function saveProgressToSupabase(vocabId,correct,wrong){
